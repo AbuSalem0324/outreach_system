@@ -8,12 +8,13 @@ timer or a guess.
 
 | Reaction | Meaning | Action |
 |---|---|---|
-| ✅ | Sent via Zoho | Log the contact, flip to `contacted` |
-| 🗑️ | Reviewed, not sending | Flip to `skipped`, no contact log |
+| 👍 | Sent via Zoho | Log the contact, flip to `contacted` |
+| 👎 | Reviewed, not sending | Flip to `skipped`, no contact log |
 
-Pick your own actual emoji if these don't feel right day to day, what
-matters is that "sent" and "reviewed but rejected" are visibly
-different reactions, not the same one meaning two things.
+Changed from the original ✅/🗑️ pair, those aren't in Telegram's
+default quick-reaction set on every client. 👍/👎 are, and the same
+rule still holds, "sent" and "reviewed but rejected" have to be
+visibly different reactions, not the same one meaning two things.
 
 ## Mechanics
 
@@ -31,12 +32,12 @@ On receiving one:
    toggling the reaction off and back on, or reacting twice, none of
    these should double-log a send or flip a decision that's already
    made.
-3. `new_reaction` contains ✅, row is still `new` → run `log_contact`
+3. `new_reaction` contains 👍, row is still `new` → run `log_contact`
    (the same Postgres function built earlier): email, company_name,
    domain, `source = 'find_pipeline'`, notes carried over from
    `research.md`'s summary. This sets `status = 'contacted'`,
    `last_contacted_at = now()`, bumps `contact_count`.
-4. `new_reaction` contains 🗑️, row is still `new` → update
+4. `new_reaction` contains 👎, row is still `new` → update
    `status = 'skipped'` directly, no `log_contact` call, this was
    never actually sent so `contact_count` and `last_contacted_at`
    should not move.
