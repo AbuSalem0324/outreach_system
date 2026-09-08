@@ -49,37 +49,69 @@ From the DataBard voice guide, enforced on every draft:
 
 ## Structure
 
-1. **Subject** — specific to the one angle from `research.md`, never a
-   generic hook. If the subject could be sent to any company in the
-   sector unchanged, it's wrong.
-2. **Greeting** — named buyer only if `research.md` found a name that's
-   actually tied to the address being sent to. If the email is a shared
-   or role inbox (`info@`, `enquiries@`, `sales@`), greet by role or
-   drop the name entirely, don't address a shared inbox by a personal
-   first name nobody confirmed reads it.
-3. **Who DataBard is** — two or three sentences, front-loaded, before
-   any relevance argument: data work, custom tool development, and
-   automation, closing the gap between manual processes and BI stacks
-   that are usually overkill for what a business this size actually
-   needs. Roughly consistent across emails, this is identity, not
-   personalisation, it doesn't need to be unique per candidate the way
-   the relevance paragraph does.
-4. **Relevance** — one paragraph, opens with something like "this could
-   be useful for [company] because," and gives the actual reasoning.
-   Grounded in what `research.md` found, but framed as *why it might
-   matter*, not as a claim about their current internal state. See
-   Personalisation ceiling below, this is where that rule lives now.
-5. **Ask** — low friction. A short call offered, not demanded.
-6. **Sign-off**, including the mandatory unsubscribe line.
+Four of these six pieces are fixed, the same every time, not written
+fresh per email. Only the greeting (mechanical, based on address type)
+and the relevance paragraph (must be genuinely per-company) are
+generated. Treat the fixed pieces as literal constants Hermes inserts
+unchanged, not prose it's instructed to reproduce consistently, that
+distinction matters, "write this the same way each time" drifts across
+ten separate generations a day in a way a literal constant can't.
 
-## Mandatory unsubscribe line
+1. **Subject** — fixed:
 
-Every email includes, with the actual recipient address populated,
-never a placeholder:
+   ```
+   Forecasting and reporting for food manufacturers
+   ```
 
-```
-https://www.databard.net/unsubscribe?e=recipient@email.com
-```
+   Not personalised per company. Specific-but-parroting subject lines
+   were the harder failure mode to hold consistent across AI-generated
+   drafts, a fixed line removes it rather than policing it better.
+2. **Greeting** — the one piece of this section that's still dynamic,
+   because it's mechanically determined by verified data, not creative
+   personalisation. Named buyer only if `research.md` found a name
+   that's actually tied to the address being sent to. If the email is
+   a shared or role inbox (`info@`, `enquiries@`, `sales@`), greet by
+   role or drop the name entirely, don't address a shared inbox by a
+   personal first name nobody confirmed reads it.
+3. **Who DataBard is** — fixed:
+
+   ```
+   DataBard does forecasting, reporting, and small automation jobs for
+   food manufacturers. Fixed scope, a working output, not a six-month
+   software programme. I spent years on the floor at Tesco and on the
+   service desk at 2 Sisters, so the work is aimed at how a factory
+   actually runs.
+   ```
+4. **Relevance** — the one genuinely generated paragraph. Opens with
+   something like "this could be useful for [company] because," and
+   gives the actual reasoning. Grounded in what `research.md` found,
+   framed as *why it might matter*, not as a claim about their current
+   internal state. See Personalisation ceiling below.
+5. **Ask** — fixed:
+
+   ```
+   Happy to do a short call if that's useful.
+   ```
+6. **Closing line** — fixed, replaces what used to be a generated
+   "unsubscribe line":
+
+   ```
+   Not relevant? Let me know.
+   https://www.databard.net/unsubscribe?e=recipient@email.com
+   ```
+
+   Softer than "unsubscribe here," invites a reply either way, someone
+   can just say "not relevant" instead of clicking through, while the
+   link still does the actual compliance work. The unsubscribe page
+   itself is unambiguous once clicked, so this phrasing doesn't lose
+   clarity, it just doesn't lead with it.
+
+## Unsubscribe requirement
+
+Covered in Structure, item 6, the closing line is fixed and mandatory
+on every email, actual recipient address populated, never a
+placeholder. Not restated here to avoid the two sections drifting out
+of sync with each other.
 
 ## Personalisation ceiling
 
