@@ -110,12 +110,22 @@ For each candidate clearing Stage 4's threshold:
 1. Read the scraped site text against `icp.pitch_angle` — does this
    company plausibly have the operational complexity and manual-process
    pain the pitch addresses, not just a keyword match but a genuine read.
-2. If no email was found in Stage 3, infer the likely buyer from
+2. One plain web search on the company name. Companies House and the
+   company's own site are both static, neither reliably reflects a
+   recent acquisition, closure, or leadership change, and this kind of
+   thing routinely surfaces in ordinary search results, trade press,
+   corporate finance announcements, local news, without needing a
+   targeted query. A recently-acquired subsidiary often doesn't have
+   the same buying autonomy an independent SME does, worth knowing
+   before treating this as a clean independent-buyer fit, not
+   necessarily an auto-reject, just something the fit reasoning in
+   Stage 3 below should account for.
+3. If no email was found in Stage 3, infer the likely buyer from
    `icp.buyer_titles` using team/about page text, and construct a probable
    address using standard patterns (firstname@domain,
    firstname.lastname@domain). Mark `confidence: unverified` — this does
    not get sent blind.
-3. Final fit score. Reject below threshold (`rejected_ai`), log the reason
+4. Final fit score. Reject below threshold (`rejected_ai`), log the reason
    in `places_seen` for later review of whether the cutoff is calibrated
    right.
 
