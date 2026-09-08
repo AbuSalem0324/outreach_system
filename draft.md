@@ -116,33 +116,58 @@ of sync with each other.
 ## Personalisation ceiling
 
 `research.md` gathers evidence so the relevance paragraph is genuinely
-true, not so it gets recited back. Citing the source in the email
-itself, "your Companies House filing shows," "I saw your accounts
-moved to small company status," "your team page lists 12 staff," reads
-as surveillance, not diligence.
+true, not so it gets recited back. Three separate ways this goes
+wrong, all landing in the same place, an email that reads like being
+watched rather than understood.
 
-There's a second, quieter version of the same failure: stating an
-unverified guess about their internal state as fact. "This would be
-useful because you're currently stitching this together by hand" is
-just as much a fabricated claim as citing a source, it's a diagnosis
-nobody confirmed, dressed up as insight. The honest version reasons
-about *why it could matter*, given what's actually observed, not what
-their process currently is.
+**Citing the source.** "Your Companies House filing shows," "I saw
+your accounts moved to small company status," "your team page lists
+12 staff," reads as surveillance, not diligence.
 
-**Not this:** "I noticed your recent filing shows you've grown from
-micro to small company status, and your website mentions a new
-facility."
+Not this: "I noticed your recent filing shows you've grown from micro
+to small company status, and your website mentions a new facility."
 
-**Also not this:** "This would be useful because your reporting is
-currently stitched together by hand every week." Nobody established
-that, it's assumed because it fits the pitch.
+**Stating an unverified guess as fact.** "This would be useful because
+you're currently stitching this together by hand" is just as much a
+fabricated claim as citing a source, it's a diagnosis nobody
+confirmed, dressed up as insight. The honest version reasons about
+*why it could matter*, given what's actually observed, not what their
+process currently is.
 
-**This instead:** "You're running production and your own fleet from
-one site, this is exactly the kind of setup where forecasting and
-stock planning get complicated fast, and where a proper BI stack would
-be overkill for what's actually needed." Grounded in the real
+Not this: "This would be useful because your reporting is currently
+stitched together by hand every week." Nobody established that, it's
+assumed because it fits the pitch.
+
+This instead: "You're running production and your own fleet from one
+site, this is exactly the kind of setup where forecasting and stock
+planning get complicated fast, and where a proper BI stack would be
+overkill for what's actually needed." Grounded in the real
 observation, honest that it's reasoning about relevance, not a claim
 about their internal reality.
+
+**Stacking several true facts back to back.** None individually
+invented, nothing cited, but the density alone reads like a dossier.
+"You prepare fruit in a chilled Farnworth plant and run your own
+refrigerated fleet nationally, seven days a week, for wholesalers and
+caterers rather than end users" is four separate specifics in one
+sentence, and it doesn't matter that all four are real, it still reads
+like research output, not something a person would casually say. One
+grounded fact stated plainly is an observation. Three or four in a row
+is a report with the citations quietly removed. The fix isn't to go
+generic, it's to speak at the category level instead of the instance
+level, still tied to what was actually found, just not reciting every
+specific detail of it.
+
+Not this: "You prepare fruit in a chilled Farnworth plant and run your
+own refrigerated fleet nationally, seven days a week, for wholesalers
+and caterers rather than end users."
+
+This instead: "This could be useful given how many moving parts your
+operations already have, production, your own fleet, routing,
+scheduling, before you even get to planning it all. That's exactly
+where automation and even small time savings add up." Still grounded
+in the real fact, they have a fleet, they run production, spoken at
+the shape of it rather than the specifics of it.
 
 If the relevance paragraph reads thin once it's written this way,
 that's a signal to hold the candidate back, the same rule running
