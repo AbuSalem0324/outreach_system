@@ -10,8 +10,21 @@ the chat as text. A file per candidate keeps the daily review scrollable
 by name rather than buried in a wall of pasted messages, which was the
 "chat litter" problem this is specifically avoiding.
 
-Filename: `YYYY-MM-DD_companyname.txt`. Contents: subject line, blank
-line, body, exactly as it should be pasted into Zoho.
+Filename: `YYYY-MM-DD_companyname.txt`. Contents:
+
+```
+To: recipient@company.com
+Subject: [subject line]
+
+[body]
+```
+
+`To` first, its own line, before the subject, this is the piece that
+was missing, a file with a subject and a body but no visible recipient
+means going back to `contacts` to look the address up separately before
+you can actually send. The whole point of this delivery format is that
+nothing extra needs looking up, copy `To`, `Subject`, and body straight
+into Zoho's three fields and go.
 
 No Drive or Docs layer. Once actually sent, Zoho's own Sent folder is
 the permanent, verbatim, timestamped archive, and `contacts.notes`
