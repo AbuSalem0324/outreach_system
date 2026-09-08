@@ -62,8 +62,14 @@ if the site publishes one.
 Filter against the active ICP:
 
 - `company_status` must be `active` — otherwise `rejected_status`.
-- `accounts.accounts_type` must be in `icp.company_size_band` (small/medium
-  per current thresholds) — otherwise `rejected_size`.
+- `accounts.accounts_type` must NOT be in
+  `icp.company_size_band.companies_house_accounts_type_exclude`
+  (`micro-entity`, `dormant`) — otherwise `rejected_size`. This is an
+  exclude filter, not a match filter: Companies House's accounts_type
+  field describes filing regime, not company size, and the field
+  cannot reliably distinguish "small" from "medium" from "somewhat
+  larger" within everything that isn't micro or dormant. Don't treat
+  it as a size gate beyond ruling out those two extremes.
 - Declared `sic_codes` must intersect the ICP's `sic_codes` list — this is
   the authoritative sector match, more precise than any Places category.
   No intersection → `rejected_sic`.
@@ -96,7 +102,10 @@ deterministically:
 Combine into one number, no AI involved:
 
 - SIC match: exact category hit scores higher than adjacent-category hit
-- Accounts-type fit: small/medium within band scores higher than edge cases
+- Accounts-type: passed the exclude filter (not micro, not dormant) —
+  this is a pass/fail input from Stage 2, not itself a scoring
+  dimension, don't try to rank within it, the field can't support that
+  distinction
 - Site signals: keyword hits + team/careers presence + absence of BI tooling
 - Filing trend (soft): micro→small or small→medium movement scores up
 

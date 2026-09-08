@@ -17,10 +17,20 @@ geography:
   primary: [Yorkshire, North East England, North West England]
   secondary: [rest of England]  # only once ICP A has enough volume to expand
 company_size_band:
-  companies_house_accounts_type: [small, medium]
-  # small: turnover ≤£15m, balance sheet ≤£7.5m, ≤50 employees
-  # medium: turnover ≤£54m, balance sheet ≤£27m, ≤250 employees
-  # (Companies Act thresholds effective 6 April 2025)
+  companies_house_accounts_type_exclude: [micro-entity, dormant]
+  # Companies House's accounts_type field describes which accounting/audit
+  # exemption regime a company filed under, not its size — Companies House
+  # has confirmed on their own developer forum that they do not classify
+  # companies by size at all. The vast majority of genuine SMEs, including
+  # ones well within a 50-200 employee band, file under 'total-exemption-
+  # full', not a literal 'small' or 'medium' label (across the whole UK
+  # register, 'small' covers ~71k companies and 'medium' under 800, versus
+  # 'total-exemption-full' covering over 1.27m). Filtering on [small,
+  # medium] excludes almost the entire real target population.
+  # This field can only reliably rule out the two extremes: micro-entity
+  # (≤10 employees by definition, too small) and dormant (not trading).
+  # Site scrape signals in Stage 3 of find.md are the actual size proxy
+  # from here, not this field.
 sic_codes:
   food_drink_manufacturing:
     - "10.11"  # Processing and preserving of meat
@@ -80,7 +90,9 @@ name: Light Engineering / Professional Services (no sector-specific credibility)
 geography:
   primary: [England, national]
 company_size_band:
-  companies_house_accounts_type: [small, medium]
+  companies_house_accounts_type_exclude: [micro-entity, dormant]
+  # Same correction as ICP A — see that block for why [small, medium]
+  # as an inclusion filter was wrong.
 sic_codes:
   light_engineering:
     - "25.11"  # Manufacture of metal structures and parts
