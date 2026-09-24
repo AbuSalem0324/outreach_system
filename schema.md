@@ -40,9 +40,10 @@ Every company that has been through the pipeline, keyed on
 | first_seen_at, last_checked_at | timestamptz | |
 | place_id | text | legacy, unused |
 
-`outcome` values: `pending`, `in_research`, `promoted_to_contacts`,
-`rejected_ingest`, `rejected_research`, `rejected_check`,
-`rejected_verify`, `held_verify`, `seen_before`. Older rows carry
+`outcome` values: `pending`, `in_research`, `awaiting_pick`,
+`promoted_to_contacts`, `rejected_ingest`, `rejected_research`,
+`rejected_check`, `rejected_verify`, `held_verify`, `seen_before`.
+Older rows carry
 Places-era values (`passed_to_ai`, `rejected_score` and so on); the
 new pipeline never selects them.
 

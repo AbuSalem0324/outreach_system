@@ -27,12 +27,14 @@ Drive layer.
   "I noticed that", no "in today's fast-paced"
 - Direct, no consultancy jargon
 - Positioning by refusal: no dashboards, no generic BI or Power BI
-  framing, no "we do everything". Forecasting, reporting, small
-  automation, that's it.
+  framing, no "we do everything". Bespoke forecasting, reporting, and
+  small automation, fitted to the current workflow. Not another
+  platform to learn, and not an enterprise system most of which would
+  sit unused.
 
 ## Structure
 
-Four fixed pieces, two generated. Fixed pieces are literal constants,
+Five fixed pieces, one generated sentence. Fixed pieces are literal constants,
 inserted unchanged, not prose Hermes is asked to reproduce
 consistently. That distinction is the whole point: "write it the same
 each time" drifts across ten drafts a day, a constant doesn't.
@@ -52,17 +54,28 @@ each time" drifts across ten drafts a day, a constant doesn't.
 3. **Who DataBard is**, fixed:
 
    ```
-   DataBard does forecasting, reporting, and small automation jobs for
-   food manufacturers. Fixed scope, a working output, not a six-month
-   software programme. I spent years on the floor at Tesco and on the
-   service desk at 2 Sisters, so the work is aimed at how a factory
-   actually runs.
+   DataBard builds bespoke forecasting, reporting and small automation
+   tools for food manufacturers. Fixed scope, a working output, not a
+   six-month software programme. I spent years on the floor at Tesco
+   and on the service desk at 2 Sisters, so the work is aimed at how a
+   factory actually runs.
    ```
 
-4. **Relevance**, generated. Two or three sentences. Opens with
+4. **Relevance**, two parts. First sentence generated: opens with
    something like "This could be useful for <company> because" and
-   builds on the angle sentence from research. Reasoning about why it
-   might matter, not a claim about their internal state.
+   builds on the angle from research (the shape of the operation, not
+   a diagnosis). Second sentence is a fixed constant, inserted
+   unchanged:
+
+   ```
+   A small forecasting or reporting tool, built around the current
+   workflow, can sit next to how the operation already runs, without
+   the learning curve or the cost of an enterprise system most of
+   which would go unused.
+   ```
+
+   Do not rewrite that second sentence. Do not add a third. The
+   generated line carries their context; this line carries the offer.
 
 5. **Ask**, fixed:
 
@@ -97,8 +110,9 @@ report with the citations removed. Speak at the category level:
 "production, your own fleet, routing, scheduling" not "a chilled plant
 in Farnworth running seven days a week for wholesalers".
 
-If the paragraph reads thin once written this way, hold the candidate
-back. Drop rather than pad.
+If the generated sentence reads thin once written this way, hold the
+candidate back. Drop rather than pad. Do not bulk it out by restating
+the fixed offer line in different words.
 
 ## Handoff
 

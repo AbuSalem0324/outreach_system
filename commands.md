@@ -27,21 +27,32 @@ Fill today's remaining first-touch quota from the most recent campaign
 
 1. `python3 scripts/next.py [--campaign <id>] [--limit n]` prints a
    JSON bundle per candidate: Endole row, site summary, Companies
-   House officers, `check.md` decision. Candidates with a hard stop
-   are already excluded by the script.
-2. For each bundle, Hermes runs `research.md` and then `draft.md`.
+   House officers, Hunter emails, `check.md` decision. Candidates with
+   a hard stop are already excluded by the script.
+2. For each bundle, Hermes runs `research.md` (and `draft.md` only
+   once the send target is known).
 3. Per candidate, one of:
-   - `python3 scripts/deliver.py send --company-number <n> --email <e>
-     --buyer-name "<name or empty>" --buyer-role "<role>"
-     --angle "<one sentence>" --subject "<s>" --body-file <path>`
-     which verifies the email, inserts the contact, and sends the draft
-     file to Telegram, or
+   - `python3 scripts/deliver.py send ...` when Stage 3 picked one
+     relevant personal or fell through to generic,
+   - `python3 scripts/pick.py offer --company-number <n> --file <json>`
+     when more than one personal and no single relevant title,
    - `python3 scripts/deliver.py reject --company-number <n>
      --reason "<why>"`.
-4. Reply with a one-line tally: delivered, held on verification,
-   rejected in research.
+4. Reply with a one-line tally: delivered, awaiting pick, held on
+   verification, rejected in research.
 
 If quota is already zero, say so and stop. Don't research anyway.
+
+## `o/to <company_number> <n or email>`
+
+Resolves a picker. Hermes:
+
+1. `python3 scripts/pick.py resolve --company-number <n> <choice>`
+2. Reads `draft.md`, writes the body for that address (first-name
+   greeting if personal), `deliver.py send` with that `--email`.
+
+If only one company is `awaiting_pick`, `<company_number>` may be
+omitted. Do not draft until this command.
 
 ## `/followups`
 

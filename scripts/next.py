@@ -26,6 +26,7 @@ from urllib.parse import urljoin
 
 from check import check_email
 from common import SSL_CTX, USER_AGENT, Supabase, http_json, load_env, log, now_iso
+from hunter import hunt_domain
 
 CH_BASE = "https://api.company-information.service.gov.uk"
 SCRAPE_TIMEOUT_S = 12
@@ -270,6 +271,7 @@ def run(args: argparse.Namespace) -> int:
 
         db.set_outcome(cn, "in_research")
         site = scrape_site(row.get("website"))
+        hunter = hunt_domain(row.get("domain"))
         bundles.append(
             {
                 "company_number": cn,
@@ -283,9 +285,16 @@ def run(args: argparse.Namespace) -> int:
                 "check": check,
                 "site": site,
                 "companies_house": {"profile": ch_profile(cn), "officers": ch_officers(cn)},
+                "hunter": hunter,
             }
         )
-        log("stage=bundle", company_number=cn, site=site.get("status"), officers=len(bundles[-1]["companies_house"]["officers"]))
+        log(
+            "stage=bundle",
+            company_number=cn,
+            site=site.get("status"),
+            officers=len(bundles[-1]["companies_house"]["officers"]),
+            hunter=hunter.get("status"),
+        )
 
     print(
         json.dumps(

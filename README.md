@@ -37,6 +37,8 @@ reading the markdown above.
 - `scripts/common.py`: env loading, Supabase and Telegram helpers
 - `scripts/ingest.py`: CSV to `campaigns` and `companies_seen`
 - `scripts/next.py`: assemble research bundles for today's quota
+- `scripts/hunter.py`: Hunter.io domain-search (fetch only)
+- `scripts/pick.py`: Telegram recipient picker when Stage 3 is ambiguous
 - `scripts/check.py`: contact history decision for one email
 - `scripts/verify.py`: MillionVerifier decision for one email
 - `scripts/deliver.py`: insert the contact, send the draft file, or
@@ -58,6 +60,6 @@ reading the markdown above.
 
 Environment variables the scripts expect: `SUPABASE_URL`,
 `SUPABASE_SECRET_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`,
-`COMPANY_HOUSE`, `MILLIONVERIFIER_API_KEY`.
+`COMPANY_HOUSE`, `MILLIONVERIFIER_API_KEY`, `HUNTER_API_KEY`.
 
 No credentials, API keys, or client data live in this repository.

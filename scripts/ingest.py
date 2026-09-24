@@ -95,6 +95,26 @@ def first_value(row: dict[str, str], headers: list[str] | None) -> str | None:
     return None
 
 
+_LEGAL_SUFFIX = re.compile(
+    r"^(?P<name>.+?\b(?:Limited|Ltd\.?|PLC|P\.L\.C\.|LLP|CIC|Company))\s+(?P<address>.+)$",
+    re.IGNORECASE,
+)
+
+
+def split_name_address(value: str | None) -> tuple[str | None, str | None]:
+    """Split Endole 'Name & Address' into registered name + remainder."""
+    if not value:
+        return None, None
+    v = value.strip()
+    m = _LEGAL_SUFFIX.match(v)
+    if m:
+        return m.group("name").strip(), m.group("address").strip()
+    if "," in v:
+        name, addr = v.split(",", 1)
+        return name.strip() or None, addr.strip() or None
+    return v, None
+
+
 def read_csv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
     raw = path.read_bytes()
     text = raw.decode("utf-8-sig", errors="replace")
@@ -192,9 +212,10 @@ def run(args: argparse.Namespace) -> int:
     seen: dict[str, dict[str, Any]] = {}
     for i in range(0, len(numbers), 200):
         chunk = numbers[i : i + 200]
+        quoted = ",".join(f'"{n}"' for n in chunk)
         for r in db.select(
             "companies_seen",
-            company_number=f"in.({','.join(chunk)})",
+            company_number=f"in.({quoted})",
             select="company_number,outcome,reason",
         ):
             seen[r["company_number"]] = r
@@ -238,7 +259,8 @@ def run(args: argparse.Namespace) -> int:
             )
             continue
         if prior:
-            # pending from an earlier campaign: leave it, it'll get picked up
+            # pending from an earlier campaign, or a second CSV row that
+            # resolved to the same number in this file
             summary["seen_before"] += 1
             continue
         summary["new"] += 1
@@ -248,6 +270,7 @@ def run(args: argparse.Namespace) -> int:
             summary["no_email"] += 1
         base["outcome"] = "pending"
         to_insert.append(base)
+        seen[p["company_number"]] = {"company_number": p["company_number"], "outcome": "pending"}
 
     for i in range(0, len(to_insert), 100):
         db.insert("companies_seen", to_insert[i : i + 100])

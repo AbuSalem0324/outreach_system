@@ -36,6 +36,11 @@ TOUCH_2 = """{greeting}
 Following up on my note from earlier in the week. The short version:
 {angle}
 
+That is the kind of job I build around: a small forecasting or
+reporting tool fitted to the current workflow, not another platform
+to learn, and cheaper than an enterprise system most of which would
+sit unused.
+
 Happy to do a short call if that's useful, or I can send over a
 one-page example of the kind of output I mean.
 
@@ -48,8 +53,9 @@ Not relevant? Let me know.
 TOUCH_3 = """{greeting}
 
 Last one from me. If forecasting or reporting comes up at {company}
-at some point, I'm easy to find, and the thinking behind my earlier
-note still stands: {angle}
+at some point, I'm easy to find. Still the same offer: a tool built
+for how the work already runs, not a bloated system to learn. The
+thinking behind my earlier note still stands: {angle}
 
 Adam
 

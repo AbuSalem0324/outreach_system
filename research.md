@@ -2,9 +2,9 @@
 
 Hermes' job, run on each bundle `next.py` prints. Inputs: the Endole
 row (`raw`), the site summary the script scraped, Companies House
-officers, the `check.md` decision. Output: a buyer, one angle, and an
-email, or a rejection with a reason. Token cost is not the constraint
-here, accuracy is.
+officers, Hunter personals/generics, the `check.md` decision. Output:
+a buyer, one angle, and an email, a picker, or a rejection with a
+reason. Token cost is not the constraint here, accuracy is.
 
 ## Hard rule: no invented specifics
 
@@ -53,22 +53,63 @@ No confident name → role-addressed, never invented.
 
 ## Stage 3: the email
 
-In this order, stop at the first that exists:
+Pool of **personal** addresses, all observed, never invented:
 
-1. A personal address in the Endole row (`raw._personal_email`, the
-   `Email` column when Endole fills it with a named person's address).
-2. A personal address for the chosen buyer found on the site or via
-   the web search.
-3. The generic address from Endole (`raw._generic_email`, or the
-   `Email` column when it is `info@`, `sales@`, `reception@`) → role-
-   addressed greeting, still worth sending.
-4. Construct `firstname@domain` or `firstname.lastname@domain` only if
-   the site or search shows that pattern for someone else at the
-   company. Otherwise use the generic.
+- Hunter `personals` in the bundle
+- Endole `raw._personal_email` when it is a named person, not `info@`
+- A personal address on the site or in the web search for a named buyer
 
-`deliver.py` runs `verify.md` on whatever you pass. Constructed
-addresses are held on `catch_all` like anything else, so don't spend
-effort on a guess when a published generic exists.
+A personal is **relevant** when title or department fits the ICP
+`buyer_titles` (operations, supply chain, MD, finance) or is clearly
+the owner-operator. Marketing, HR, sales-dev, and intern roles are
+not relevant.
+
+Decision tree, stop at the first hit:
+
+1. **Exactly one relevant personal** → that address is the send
+   target. Go straight to Stage 4 and `draft.md`. Greeting uses their
+   first name. Do not offer a picker.
+2. **More than one personal, and not exactly one relevant** → picker.
+   Do not call `deliver.py send`. Write
+   `/root/outreach/picks/<company_number>.json` with every personal
+   (relevant first), one-line `reason` each, the generic as the last
+   item if one exists, plus `angle`, `company_name`, `company_number`.
+   Then `python3 scripts/pick.py offer --company-number <n> --file
+   <that path>`. Stop this company. Adam replies `o/to <n> <index or
+   email>`; then draft to the chosen address.
+3. **Else** (no personals, or one personal that is not relevant) →
+   generic. Sources, first that exists: Hunter `generics`, Endole
+   `raw._generic_email` / `info@` `sales@` `reception@`, a generic on
+   the site. Role-addressed greeting. Still worth sending.
+
+Do not construct `firstname@domain` unless the site or search shows
+that pattern for someone else at the company. Hunter `pattern` alone
+is not enough.
+
+`deliver.py` runs `verify.md` on whatever you pass. Do not verify the
+whole Hunter list; only the address that is actually sent.
+
+Picker JSON shape:
+
+```json
+{
+  "company_number": "01234567",
+  "company_name": "Example Ltd",
+  "angle": "one complete sentence",
+  "candidates": [
+    {
+      "email": "jane@example.com",
+      "name": "Jane Roe",
+      "position": "Operations Director",
+      "department": "operations",
+      "seniority": "executive",
+      "confidence": 92,
+      "kind": "personal",
+      "reason": "ops title, matches buyer_titles"
+    }
+  ]
+}
+```
 
 ## Stage 4: the angle
 
@@ -76,7 +117,9 @@ One sentence. Grounded in something observed, phrased at the shape of
 the thing, not the instance (see `draft.md`, Personalisation ceiling).
 It must stand alone as a complete sentence, because `followup.md`
 slots it verbatim into the second and third touch after the words
-"The short version:". Write it so that reads naturally.
+"The short version:". Write it so that reads naturally. Do not put
+the bespoke-vs-enterprise pitch in the angle; that is fixed copy in
+`draft.md` and `followup.md`.
 
 Good: "You're running production and your own fleet from one site,
 which is exactly where forecasting and stock planning get complicated
@@ -93,13 +136,17 @@ dossier.
 
 ## Output
 
-Passed to `deliver.py send` as arguments: `--email`, `--buyer-name`
-(empty string if role-addressed), `--buyer-role`, `--angle`, and the
-`--subject` and `--body-file` that `draft.md` produces. `deliver.py`
-writes `buyer_name`, `buyer_role`, `angle`, and a short `notes` line
-to `contacts`. No separate research table.
+On a straight draft or after `o/to`: passed to `deliver.py send` as
+arguments `--email`, `--buyer-name` (empty string if role-addressed),
+`--buyer-role`, `--angle`, and the `--subject` and `--body-file` that
+`draft.md` produces. `To:` on the contact row is that email. Never
+leave it blank and never default it to candidate #1 without a pick.
+
+On a picker: `pick.py offer` sets `companies_seen.outcome` to
+`awaiting_pick`. No `contacts` row until `o/to`.
 
 ## What this stage does not do
 
-No drafting beyond the angle sentence, no sending, no status writes
-except through `deliver.py`.
+No drafting beyond the angle sentence until the send target is known,
+no sending, no status writes except through `deliver.py` or
+`pick.py offer`. Hunter does not choose the recipient.
