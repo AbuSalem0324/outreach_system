@@ -80,13 +80,32 @@ def resolve_choice(payload: dict[str, Any], choice: str) -> dict[str, Any]:
     raise SystemExit(f"email not in candidate list: {email}")
 
 
+def chosen_payload(payload: dict[str, Any], chosen: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "company_number": payload.get("company_number"),
+        "company_name": payload.get("company_name"),
+        "angle": payload.get("angle"),
+        "postal_address": payload.get("postal_address") or None,
+        "buyer_name": chosen.get("name") or "",
+        "buyer_role": chosen.get("position") or "",
+        "chosen": {
+            "email": chosen.get("email"),
+            "name": chosen.get("name"),
+            "position": chosen.get("position"),
+            "linkedin_url": chosen.get("linkedin_url") or None,
+            "phone": chosen.get("phone") or None,
+            "phone_type": chosen.get("phone_type") or None,
+        },
+    }
+
+
 def cmd_resolve(args: argparse.Namespace) -> int:
     path = pick_path(args.company_number)
     if not path.is_file():
         raise SystemExit(f"no pick file: {path}")
     payload = json.loads(path.read_text(encoding="utf-8"))
     chosen = resolve_choice(payload, args.choice)
-    print(json.dumps({"company_number": payload.get("company_number"), "chosen": chosen, "angle": payload.get("angle"), "buyer_name": chosen.get("name"), "buyer_role": chosen.get("position"), "company_name": payload.get("company_name")}, indent=2, ensure_ascii=False))
+    print(json.dumps(chosen_payload(payload, chosen), indent=2, ensure_ascii=False))
     return 0
 
 

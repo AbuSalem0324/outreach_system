@@ -10,10 +10,10 @@ on purpose. Everything else does one job and defers back here for what
 A first touch is complete when a `contacts` row reaches `contacted`
 (Adam reacted 👍, the email went out via Zoho, `messages` holds the
 verbatim copy) or `skipped` (reviewed, deliberately not sent). A
-sequence is complete when the third touch is logged, or the contact
-replies, unsubscribes, or Adam closes it with 👎 on a follow-up. A draft
-that never gets a reaction just sits. Nothing times out, escalates, or
-auto-sends.
+sequence is complete when the fourth touch resolves, or there is nothing
+left to send it through, or the contact replies on any channel,
+unsubscribes, or Adam closes it. A draft or task that never gets a
+reaction just sits. Nothing times out, escalates, or auto-sends.
 
 ## Read order
 
@@ -35,12 +35,15 @@ These hold regardless of which stage is running. No exception clause.
 
 - **10 first touches a day, maximum.** A ceiling, not a target.
   Follow-ups are on top, they never count against it.
-- **Three touches, then stop.** Day 0, +3 days, +7 more days. The
-  database trigger sets `next_due_at`; nothing else does.
+- **Four touches, then stop.** Emails at day 0, +3, +7. LinkedIn
+  alongside touch 3, if a URL was stored. Letter, then call, as touch
+  4. Timing comes from the trigger, plus `resolve_touch` for the
+  letter-to-call gap. Nothing else writes `next_due_at`.
 - **Follow-ups are on demand.** They surface when Adam runs
-  `/followups`, never pushed unasked.
+  `/followups`, never pushed unasked. Tasks included.
 - **Follow-ups are templated.** Only the original angle from the first
-  touch is slotted in. No new research, no regenerated copy.
+  touch is slotted in. No new research, no regenerated copy. That
+  covers the letter and the call prompt too.
 - **Dedup on `email`, never `domain`.** A second person at a company
   already reached is not blocked. The same address is.
 - **Three permanent hard stops**: `unsubscribed`, `do_not_contact`,
@@ -60,13 +63,24 @@ These hold regardless of which stage is running. No exception clause.
   `rejected_research` with a reason, not a weak email.
 - **Buyers, not consultancies.** Boutique consultancies are out.
 - **Replies are manual.** Zoho is outside this system. Adam tells
-  Hermes `/replied`, `/dnc`, `/unsub`. Nothing infers them.
+  Hermes `/replied`, `/dnc`, `/unsub`. Nothing infers them. A 🤝 on a
+  task is the same hard stop as `/replied`.
+- **Hard stops apply to every channel.** `unsubscribed`,
+  `do_not_contact`, and `replied` block email, LinkedIn, letter, and
+  phone.
+- **Calls: Corporate TPS always.** TPS as well when `phone_type` is
+  `mobile`. The task says so. This system does not check for him, and
+  it does not dial.
+- **Letters carry the same pre-filled unsubscribe link** as every
+  email. Envelope address is printed, not handwritten: real stamp, no
+  window, no logo. Signed in ink.
+- **No automated LinkedIn actions. No auto-dialling.**
 - **Voice**: UK spelling, sentence case, no em dashes, no hashtags, no
   buzzwords, no AI cadence, no dashboards or generic BI framing. Detail
   in `draft.md`.
 
 ## What this system is not
 
-Not automated sending. Not a CRM beyond three touches and a status.
+Not automated sending. Not a CRM beyond four touches and a status.
 Not inbox-aware. Not multi-ICP at once. Each of those is a deliberate
 absence, add them only once this is boring and stable.

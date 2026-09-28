@@ -25,7 +25,7 @@ is the source of truth, not whatever is cached on the box.
 - `research.md`: buyer, angle, and the disqualify path
 - `verify.md`: email deliverability gate before drafting
 - `draft.md`: voice, structure, Telegram delivery format
-- `followup.md`: the two fixed follow-up templates and when they surface
+- `followup.md`: touches two to four, including LinkedIn, letter, and call tasks
 - `send-and-log.md`: reaction-triggered logging, first touch and follow-up
 - `schema.md`: the deployed Supabase schema, checked against the database
 

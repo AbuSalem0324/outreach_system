@@ -86,6 +86,24 @@ Do not construct `firstname@domain` unless the site or search shows
 that pattern for someone else at the company. Hunter `pattern` alone
 is not enough.
 
+## Address and phone
+
+Store these only when observed. Omit the flag rather than sending a blank.
+
+- `postal_address`: trading address printed on the company's own site
+  (contact, footer, or about). Never the Companies House registered
+  office. Never a `C/O` address. Do not invent one from the postcode.
+- `phone_type`, only when a phone is stored:
+  - `direct`: a named person's work line
+  - `switchboard`: the company main number
+  - `mobile`: a mobile, or any number whose type is unclear
+- Hunter may supply `linkedin_url` and `phone` on the chosen person.
+  It does not supply `phone_type` or `postal_address`. Domain-search
+  fields are `linkedin` and `phone_number`.
+- On a picker, put `linkedin_url`, `phone`, and `phone_type` on each
+  candidate, and `postal_address` once on the payload. On a straight
+  send, pass them as `deliver.py` flags.
+
 `deliver.py` runs `verify.md` on whatever you pass. Do not verify the
 whole Hunter list; only the address that is actually sent.
 
@@ -105,9 +123,13 @@ Picker JSON shape:
       "seniority": "executive",
       "confidence": 92,
       "kind": "personal",
-      "reason": "ops title, matches buyer_titles"
+      "reason": "ops title, matches buyer_titles",
+      "linkedin_url": "https://www.linkedin.com/in/example",
+      "phone": "+44 161 000 0000",
+      "phone_type": "direct"
     }
-  ]
+  ],
+  "postal_address": "1 Mill Lane, Bolton BL1 1AA"
 }
 ```
 
@@ -115,9 +137,9 @@ Picker JSON shape:
 
 One sentence. Grounded in something observed, phrased at the shape of
 the thing, not the instance (see `draft.md`, Personalisation ceiling).
-It must stand alone as a complete sentence, because `followup.md`
-slots it verbatim into the second and third touch after the words
-"The short version:". Write it so that reads naturally. Do not put
+It must stand alone as a complete sentence, because later emails, the
+letter, and the call prompt slot it verbatim. Touch 2 still introduces
+it after "The short version:". Write it so that reads naturally. Do not put
 the bespoke-vs-enterprise pitch in the angle; that is fixed copy in
 `draft.md` and `followup.md`.
 
@@ -139,7 +161,9 @@ dossier.
 On a straight draft or after `o/to`: passed to `deliver.py send` as
 arguments `--email`, `--buyer-name` (empty string if role-addressed),
 `--buyer-role`, `--angle`, and the `--subject` and `--body-file` that
-`draft.md` produces. `To:` on the contact row is that email. Never
+`draft.md` produces. When known, also `--linkedin-url`, `--phone`,
+`--phone-type`, and `--postal-address`. Omit an empty flag. Do not
+default `phone_type`. `To:` on the contact row is that email. Never
 leave it blank and never default it to candidate #1 without a pick.
 
 On a picker: `pick.py offer` sets `companies_seen.outcome` to

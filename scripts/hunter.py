@@ -14,6 +14,13 @@ from common import http_json, load_env, log
 HUNTER_SEARCH = "https://api.hunter.io/v2/domain-search"
 
 
+def _clean(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    return text or None
+
+
 def _item(e: dict[str, Any], *, kind: str) -> dict[str, Any]:
     first = (e.get("first_name") or "").strip()
     last = (e.get("last_name") or "").strip()
@@ -25,6 +32,8 @@ def _item(e: dict[str, Any], *, kind: str) -> dict[str, Any]:
         "seniority": e.get("seniority"),
         "confidence": e.get("confidence"),
         "kind": kind,
+        "linkedin_url": _clean(e.get("linkedin")),
+        "phone": _clean(e.get("phone_number")),
     }
 
 

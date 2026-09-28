@@ -33,6 +33,32 @@ from common import (
 from verify import verify_email
 
 
+PHONE_TYPES = {"direct", "mobile", "switchboard"}
+
+
+def enrichment_fields(linkedin_url: str, phone: str, phone_type: str, postal_address: str, now: str) -> dict[str, Any]:
+    linkedin = (linkedin_url or "").strip() or None
+    phone_v = (phone or "").strip() or None
+    kind = (phone_type or "").strip() or None
+    postal = (postal_address or "").strip() or None
+    if phone_v and kind not in PHONE_TYPES:
+        raise SystemExit("phone_type must be direct, mobile, or switchboard when phone is set")
+    if kind and not phone_v:
+        raise SystemExit("phone_type without phone")
+    fields: dict[str, Any] = {
+        "linkedin_url": linkedin,
+        "phone": phone_v,
+        "phone_type": kind,
+        "postal_address": postal,
+        "enrichment_source": None,
+        "enriched_at": None,
+    }
+    if linkedin or phone_v:
+        fields["enrichment_source"] = "hunter"
+        fields["enriched_at"] = now
+    return fields
+
+
 def company_row(db: Supabase, company_number: str) -> dict[str, Any]:
     rows = db.select("companies_seen", company_number=f"eq.{company_number}", limit="1")
     if not rows:
@@ -100,6 +126,7 @@ def cmd_send(db: Supabase, args: argparse.Namespace) -> int:
         "draft_subject": args.subject,
         "draft_body": body,
         "email_verification_status": v.get("result") or "ok",
+        **enrichment_fields(args.linkedin_url, args.phone, args.phone_type, args.postal_address, now_iso()),
     }
     row = db.insert("contacts", contact)[0]
 
@@ -127,6 +154,10 @@ def main() -> int:
     s.add_argument("--angle", required=True, help="one complete sentence; follow-ups reuse it verbatim")
     s.add_argument("--subject", required=True)
     s.add_argument("--body-file", required=True)
+    s.add_argument("--linkedin-url", default="")
+    s.add_argument("--phone", default="")
+    s.add_argument("--phone-type", default="")
+    s.add_argument("--postal-address", default="")
     s.add_argument("--company-name", help="fallback if companies_seen has none")
     s.add_argument("--skip-verify", action="store_true", help="tests only")
     s.add_argument("--force", action="store_true", help="ignore the daily cap; tests only")

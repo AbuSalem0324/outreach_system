@@ -57,9 +57,12 @@ omitted. Do not draft until this command.
 ## `/followups`
 
 `python3 scripts/followups.py` lists every contact with a follow-up
-due, builds the templated touch from `followup.md`, sends one file per
-contact, and reports the count. `--list` only lists. Nothing sends
-without a 👍.
+due and posts what `followup.md` says is due: an email draft for touch
+2 or 3, a LinkedIn task alongside touch 3 when a URL is stored, a
+letter task, a call task, or a close when nothing is left to send.
+`--list` only lists. It does not send, insert, or close. Nothing is
+sent without a reaction. Report emails, LinkedIn tasks, letters,
+calls, and closes separately.
 
 ## `/replied <email>`, `/dnc <email>`, `/unsub <email>`, `/close <email>`
 
@@ -79,6 +82,7 @@ sequences. `python3 scripts/status.py summary`.
 
 ## Reactions
 
-👍 on a draft file: sent via Zoho, log it. 👎: reviewed, not sending
-(first touch → `skipped`, follow-up → `closed`). Anything else is
-ignored. Detail in `send-and-log.md`.
+👍 on a draft file: sent via Zoho, log it. 👎 on a first-touch draft:
+reviewed, not sending (`skipped`). 👎 on a follow-up email draft:
+sequence over (`closed`). 👎 on a task skips that task only. 🤝 on a
+task is a reply. Anything else is ignored. Detail in `send-and-log.md`.

@@ -121,7 +121,10 @@ Write the body to a temp file and call:
 ```
 python3 scripts/deliver.py send --company-number <n> --email <e> \
   --buyer-name "<name or empty>" --buyer-role "<role>" \
-  --angle "<sentence>" --subject "<subject>" --body-file <path>
+  --angle "<sentence>" --subject "<subject>" --body-file <path> \
+  --linkedin-url "<url, omit if none>" --phone "<number, omit if none>" \
+  --phone-type "<direct|mobile|switchboard, omit if no phone>" \
+  --postal-address "<trading address, omit if none>"
 ```
 
 `deliver.py` verifies the address, inserts the contact as `new` with

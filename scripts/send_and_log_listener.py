@@ -21,6 +21,7 @@ from common import SOURCE, Supabase, http_json, load_env, log, require_env
 
 SENT_EMOJI = "👍"
 SKIP_EMOJI = "👎"
+RESPONDED_EMOJI = "🤝"
 POLL_TIMEOUT_S = 50
 BACKOFF_S = 5
 
@@ -34,7 +35,43 @@ def contains(emojis: list[str], needle: str) -> bool:
     return any(n in e.replace("\ufe0f", "") for e in emojis)
 
 
+def task_outcome(emojis: list[str]) -> str | None:
+    if contains(emojis, RESPONDED_EMOJI):
+        return "responded"
+    if contains(emojis, SENT_EMOJI):
+        return "done"
+    if contains(emojis, SKIP_EMOJI):
+        return "skipped"
+    return None
+
+
 def apply_decision(db: Supabase, message_id: int, new_emojis: list[str], actor: str | None = None) -> None:
+    try:
+        pending = db.select(
+            "messages",
+            telegram_message_id=f"eq.{message_id}",
+            outcome="eq.pending",
+            select="id,contact_id,channel,outcome",
+        )
+    except Exception as exc:  # noqa: BLE001
+        log("decision=error", message_id=message_id, reason=f"task_lookup_failed:{exc}")
+        return
+    if pending:
+        outcome = task_outcome(new_emojis)
+        if not outcome:
+            log("decision=ignore", message_id=message_id, reason="pending_task_unmapped", new_reaction=",".join(new_emojis) or "-")
+            return
+        try:
+            result = db.rpc("resolve_touch", {"p_telegram_message_id": message_id, "p_outcome": outcome})
+        except Exception as exc:  # noqa: BLE001
+            log("decision=error", message_id=message_id, reason=str(exc))
+            return
+        if not result:
+            log("decision=ignore", message_id=message_id, reason="resolve_touch_noop")
+            return
+        log("decision=resolve_touch", message_id=message_id, outcome=outcome, actor=actor or "-")
+        return
+
     try:
         rows = db.select(
             "contacts",
