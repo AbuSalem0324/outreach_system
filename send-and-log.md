@@ -31,11 +31,17 @@ message finds no matching row and is ignored.
 
 ## Mechanics
 
-Production path is the Hermes plugin `send-and-log` on
-`gateway_platform_event`; the gateway already long-polls Telegram, so
-`send_and_log_listener.py` must not poll while the gateway runs.
-Standalone polling is for isolated tests only (one `getUpdates` client
-per bot, a second one 409s).
+Production path is the Hermes plugin `send-and-log`. Email-bot
+reactions arrive on `gateway_platform_event` with `scope=main`. The
+gateway already long-polls that bot, so `send_and_log_listener.py`
+must not poll it while the gateway runs.
+
+LinkedIn reactions are a second poller inside the same plugin, using
+`TELEGRAM_LI_BOT_TOKEN` only, `scope=linkedin`. That token is a
+different bot, so it does not 409 the gateway. A LinkedIn reaction
+never falls through to an email draft, even if the message ids match.
+If a pending email task and a pending LinkedIn task share a message
+id, neither reaction is applied.
 
 `message_reaction` must be in the bot's `allowed_updates`.
 

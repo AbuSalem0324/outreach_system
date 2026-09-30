@@ -58,7 +58,8 @@ omitted. Do not draft until this command.
 
 `python3 scripts/followups.py` lists every contact with a follow-up
 due and posts what `followup.md` says is due: an email draft for touch
-2 or 3, a LinkedIn task alongside touch 3 when a URL is stored, a
+2 or 3, a LinkedIn task alongside touch 3 when a URL is stored (that
+task goes to the LinkedIn bot, not this chat), a
 letter task, a call task, or a close when nothing is left to send.
 `--list` only lists. It does not send, insert, or close. Nothing is
 sent without a reaction. Report emails, LinkedIn tasks, letters,

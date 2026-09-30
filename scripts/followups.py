@@ -18,6 +18,7 @@ from common import (
     Telegram,
     draft_file,
     first_name,
+    linkedin_telegram,
     load_env,
     log,
     now_iso,
@@ -244,6 +245,21 @@ def _summary(contact: dict[str, Any], actions: list[dict[str, Any]]) -> dict[str
     }
 
 
+def _linkedin_client() -> Telegram | None:
+    try:
+        return linkedin_telegram()
+    except SystemExit:
+        return None
+
+
+def client_for(kind: str, main: Telegram, linkedin: Telegram | None) -> Telegram:
+    if kind == "linkedin":
+        if linkedin is None:
+            raise RuntimeError("linkedin bot is not configured")
+        return linkedin
+    return main
+
+
 def post_task(db: Supabase, tg: Telegram, contact: dict[str, Any], kind: str, step: int, body: str, *, filename: str | None = None, caption: str | None = None) -> dict[str, Any]:
     if kind == "letter":
         message_id = tg.send_document(filename or "letter.txt", body, caption)
@@ -277,11 +293,12 @@ def post_task(db: Supabase, tg: Telegram, contact: dict[str, Any], kind: str, st
     return record
 
 
-def deliver_actions(db: Supabase, tg: Telegram, contact: dict[str, Any], actions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def deliver_actions(db: Supabase, tg: Telegram, contact: dict[str, Any], actions: list[dict[str, Any]], linkedin: Telegram | None = None) -> list[dict[str, Any]]:
     done: list[dict[str, Any]] = []
     for action in actions:
         kind = action["kind"]
         step = action["step"]
+        task_tg = client_for(kind, tg, linkedin) if kind != "email" else tg
         if kind == "email":
             subject, body = build(contact, step)
             filename = f"{today_str()}_followup{step}_{slug(contact.get('company_name'))}.txt"
@@ -301,19 +318,19 @@ def deliver_actions(db: Supabase, tg: Telegram, contact: dict[str, Any], actions
             log("followup=delivered", email=contact["email"], step=step, message_id=message_id)
             continue
         if kind == "linkedin":
-            done.append(post_task(db, tg, contact, "linkedin", step, linkedin_text(contact)))
+            done.append(post_task(db, task_tg, contact, "linkedin", step, linkedin_text(contact)))
             if done[-1].get("task_insert_failed"):
                 break
             continue
         if kind == "letter":
             filename = f"{today_str()}_letter_{slug(contact.get('company_name'))}.txt"
             caption = "Printed envelope, stamp, no window. 👍 posted / 👎 no letter, call next / 🤝 they responded"
-            done.append(post_task(db, tg, contact, "letter", step, letter_text(contact), filename=filename, caption=caption))
+            done.append(post_task(db, task_tg, contact, "letter", step, letter_text(contact), filename=filename, caption=caption))
             if done[-1].get("task_insert_failed"):
                 break
             continue
         if kind == "call":
-            done.append(post_task(db, tg, contact, "phone", step, call_text(contact)))
+            done.append(post_task(db, task_tg, contact, "phone", step, call_text(contact)))
             if done[-1].get("task_insert_failed"):
                 break
             continue
@@ -342,18 +359,19 @@ def run(args: argparse.Namespace) -> int:
         return 0
 
     tg = Telegram()
+    li = _linkedin_client()
     delivered: list[dict[str, Any]] = []
     for contact in linkedin_gaps(db):
         try:
-            delivered.append(post_task(db, tg, contact, "linkedin", 3, linkedin_text(contact)))
-        except ValueError as exc:
+            delivered.append(post_task(db, client_for("linkedin", tg, li), contact, "linkedin", 3, linkedin_text(contact)))
+        except (ValueError, RuntimeError) as exc:
             log("followup=skip", email=contact["email"], reason=str(exc))
     for contact, actions in planned:
         if not actions:
             continue
         try:
-            delivered.extend(deliver_actions(db, tg, contact, actions))
-        except ValueError as exc:
+            delivered.extend(deliver_actions(db, tg, contact, actions, li))
+        except (ValueError, RuntimeError) as exc:
             log("followup=skip", email=contact["email"], reason=str(exc))
     print(json.dumps({"due": len(due), "delivered": delivered}, indent=2))
     return 0

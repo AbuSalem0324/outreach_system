@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from followups import build, call_text, letter_text, linkedin_text, route  # noqa: E402
+from followups import build, call_text, client_for, letter_text, linkedin_text, route  # noqa: E402
 
 
 def contact(**extra):
@@ -24,6 +24,16 @@ def contact(**extra):
 class Route(unittest.TestCase):
     def test_touch_2_is_email_only(self):
         self.assertEqual(route(contact(contact_count=1), []), [{"kind": "email", "step": 2}])
+
+    def test_linkedin_uses_the_li_client(self):
+        main, li = object(), object()
+        self.assertIs(client_for("linkedin", main, li), li)
+        self.assertIs(client_for("letter", main, li), main)
+        self.assertIs(client_for("phone", main, li), main)
+
+    def test_linkedin_without_client_refuses_the_email_bot(self):
+        with self.assertRaises(RuntimeError):
+            client_for("linkedin", object(), None)
 
     def test_touch_3_without_linkedin_is_email_only(self):
         self.assertEqual(route(contact(contact_count=2), []), [{"kind": "email", "step": 3}])

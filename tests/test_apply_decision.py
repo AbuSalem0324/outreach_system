@@ -93,6 +93,34 @@ class ApplyDecision(unittest.TestCase):
         self.assertEqual(db.rpc_calls, [])
         self.assertEqual(db.patches, [])
 
+    def test_linkedin_reaction_does_not_log_a_draft(self):
+        db = FakeDb(contacts=[{
+            "id": "c1", "email": "a@b.c", "status": "new", "telegram_message_id": 4,
+            "company_name": "Co", "domain": "b.c", "notes": None, "draft_subject": "S", "draft_body": "B",
+        }])
+        apply_decision(db, 4, ["👍"], scope="linkedin")
+        self.assertEqual(db.rpc_calls, [])
+        self.assertEqual(db.patches, [])
+
+    def test_linkedin_reaction_resolves_linkedin_task(self):
+        db = FakeDb(messages=[{"telegram_message_id": 4, "outcome": "pending", "channel": "linkedin"}])
+        apply_decision(db, 4, ["👍"], scope="linkedin")
+        self.assertEqual(db.rpc_calls[0][1]["p_outcome"], "done")
+
+    def test_main_reaction_ignores_linkedin_task(self):
+        db = FakeDb(messages=[{"telegram_message_id": 4, "outcome": "pending", "channel": "linkedin"}])
+        apply_decision(db, 4, ["👍"], scope="main")
+        self.assertEqual(db.rpc_calls, [])
+
+    def test_collision_is_not_resolved(self):
+        db = FakeDb(messages=[
+            {"telegram_message_id": 4, "outcome": "pending", "channel": "linkedin"},
+            {"telegram_message_id": 4, "outcome": "pending", "channel": "letter"},
+        ])
+        apply_decision(db, 4, ["👍"], scope="linkedin")
+        apply_decision(db, 4, ["👍"], scope="main")
+        self.assertEqual(db.rpc_calls, [])
+
 
 if __name__ == "__main__":
     unittest.main()

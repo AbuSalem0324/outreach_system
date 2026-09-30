@@ -96,8 +96,10 @@ https://www.databard.net/unsubscribe?e={email}
 
 ## Tasks: LinkedIn, letter, call
 
-Posted as their own Telegram messages, one task per message. Before
-posting, insert a `messages` row: `channel`, `sequence_step`,
+Posted as their own Telegram messages, one task per message. LinkedIn
+tasks go to the LinkedIn bot (`TELEGRAM_LI_BOT_TOKEN` /
+`TELEGRAM_LI_CHAT_ID`). Letter and call tasks stay on the email bot.
+Before posting, insert a `messages` row: `channel`, `sequence_step`,
 `outcome = 'pending'`, and the Telegram `message_id` as
 `telegram_message_id`.
 

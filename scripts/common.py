@@ -186,10 +186,13 @@ class Supabase:
 
 
 class Telegram:
-    def __init__(self) -> None:
-        env = require_env("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")
-        self.api = f"https://api.telegram.org/bot{env['TELEGRAM_BOT_TOKEN']}"
-        self.chat_id = env["TELEGRAM_CHAT_ID"]
+    def __init__(self, token: str | None = None, chat_id: str | None = None) -> None:
+        if not token or not chat_id:
+            env = require_env("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")
+            token = token or env["TELEGRAM_BOT_TOKEN"]
+            chat_id = chat_id or env["TELEGRAM_CHAT_ID"]
+        self.api = f"https://api.telegram.org/bot{token}"
+        self.chat_id = str(chat_id)
 
     def send_document(self, filename: str, content: str, caption: str | None = None) -> int:
         """Multipart upload of an in-memory text file. Returns message_id."""
@@ -235,6 +238,12 @@ class Telegram:
         if status >= 300 or not (data or {}).get("ok"):
             raise RuntimeError(f"telegram sendMessage failed: {data}")
         return int(data["result"]["message_id"])
+
+
+def linkedin_telegram() -> Telegram:
+    """LinkedIn tasks only. Never the email bot."""
+    env = require_env("TELEGRAM_LI_BOT_TOKEN", "TELEGRAM_LI_CHAT_ID")
+    return Telegram(env["TELEGRAM_LI_BOT_TOKEN"], env["TELEGRAM_LI_CHAT_ID"])
 
 
 def draft_file(to: str, subject: str, body: str) -> str:
