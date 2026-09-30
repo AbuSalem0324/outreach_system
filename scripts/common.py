@@ -23,7 +23,6 @@ USER_AGENT = "DataBardOutreach/2.0 (+https://databard.xyz)"
 SSL_CTX = ssl.create_default_context()
 UNSUB_URL = "https://www.databard.net/unsubscribe?e={email}"
 SOURCE = "endole_campaign"
-DAILY_CAP = 10
 
 
 def log(msg: str, **fields: Any) -> None:
@@ -170,9 +169,6 @@ class Supabase:
 
     def first_touches_today(self) -> int:
         return int(self.rpc("first_touches_today") or 0)
-
-    def quota_remaining(self) -> int:
-        return max(0, DAILY_CAP - self.first_touches_today())
 
     def contact_by_email(self, email: str) -> dict[str, Any] | None:
         rows = self.select("contacts", email=f"eq.{email.strip().lower()}", limit="1")

@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""/next: assemble research bundles for today's remaining first-touch quota.
+"""/next: assemble research bundles for the slice --limit asks for.
+
+There is no daily cap. The number in Adam's instruction is the only cap,
+and the caller enforces it by looping until that many drafts are delivered.
 
 Deterministic. For each pending companies_seen row, in CSV order: run
 check.md on the Endole email if present, scrape the company's own site,
@@ -231,11 +234,14 @@ def latest_campaign(db: Supabase) -> dict[str, Any] | None:
 def run(args: argparse.Namespace) -> int:
     load_env()
     db = Supabase()
-    quota = db.quota_remaining()
-    limit = min(quota, args.limit) if args.limit is not None else quota
-    if limit <= 0:
-        print(json.dumps({"quota_remaining": quota, "bundles": [], "note": "quota already used today"}, indent=2))
+    if args.limit is None or args.limit <= 0:
+        print(json.dumps({
+            "prepared": 0,
+            "bundles": [],
+            "note": "pass --limit; there is no daily cap",
+        }, indent=2))
         return 0
+    limit = args.limit
 
     campaign = {"id": args.campaign} if args.campaign else latest_campaign(db)
     if not campaign:
@@ -300,7 +306,6 @@ def run(args: argparse.Namespace) -> int:
         json.dumps(
             {
                 "campaign": campaign,
-                "quota_remaining": quota,
                 "prepared": len(bundles),
                 "rejected_check": rejected_check,
                 "pending_left": max(0, len(pending) - len(bundles) - rejected_check),
@@ -314,9 +319,9 @@ def run(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description="/next: research bundles for today's quota")
+    p = argparse.ArgumentParser(description="/next: research bundles for this slice")
     p.add_argument("--campaign", help="campaign id; default latest")
-    p.add_argument("--limit", type=int, help="cap below the remaining quota")
+    p.add_argument("--limit", type=int, help="bundles to prepare this call; not a daily cap")
     p.add_argument("--overscan", type=int, default=5, help="extra pending rows to fetch in case some hard-stop")
     return run(p.parse_args())
 

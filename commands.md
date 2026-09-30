@@ -20,15 +20,17 @@ The same file twice is rejected by hash. A different export with
 overlapping companies is fine; overlaps are marked `seen_before` and
 skipped by `/next` unless asked otherwise.
 
-## `/next [n]`
+## `/next [n]` / `outreach n`
 
-Fill today's remaining first-touch quota from the most recent campaign
-(or `--campaign <id>`). `n` caps it lower than the quota if given.
+Deliver `n` successful first-touch drafts from the most recent campaign
+(or `--campaign <id>`). `n` is the only cap. There is no daily ceiling.
 
-1. `python3 scripts/next.py [--campaign <id>] [--limit n]` prints a
-   JSON bundle per candidate: Endole row, site summary, Companies
+1. `python3 scripts/next.py [--campaign <id>] --limit <still needed>`
+   prints a JSON bundle per candidate: Endole row, site summary, Companies
    House officers, Hunter emails, `check.md` decision. Candidates with
-   a hard stop are already excluded by the script.
+   a hard stop are already excluded by the script. `--limit` is this
+   slice, not the run. After rejects, holds, and picks, call it again
+   until `n` drafts have been delivered or no pending rows remain.
 2. For each bundle, Hermes runs `research.md` (and `draft.md` only
    once the send target is known).
 3. Per candidate, one of:
@@ -38,10 +40,12 @@ Fill today's remaining first-touch quota from the most recent campaign
      when more than one personal and no single relevant title,
    - `python3 scripts/deliver.py reject --company-number <n>
      --reason "<why>"`.
-4. Reply with a one-line tally: delivered, awaiting pick, held on
-   verification, rejected in research.
+4. Reply once, when the run stops: delivered, awaiting pick, held on
+   verification, rejected in research. Do not narrate the work.
 
-If quota is already zero, say so and stop. Don't research anyway.
+If `n` is omitted, do not assume 10 and do not drain the campaign.
+If pending is gone before `n` drafts, say so and stop. Don't research
+a company that is not in a bundle.
 
 ## `o/to <company_number> <n or email>`
 

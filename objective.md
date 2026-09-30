@@ -33,8 +33,11 @@ reaction just sits. Nothing times out, escalates, or auto-sends.
 
 These hold regardless of which stage is running. No exception clause.
 
-- **10 first touches a day, maximum.** A ceiling, not a target.
-  Follow-ups are on top, they never count against it.
+- **No daily delivery ceiling.** The number Adam types is the only cap.
+  `outreach 10` means 10 successful draft deliveries this run. Rejects,
+  holds, and picks do not count. Follow-ups never count toward it.
+  Stop when that many drafts are in the chat, or no pending rows remain.
+  Do not invent a daily 10.
 - **Four touches, then stop.** Emails at day 0, +3, +7. LinkedIn
   alongside touch 3, if a URL was stored. Letter, then call, as touch
   4. Timing comes from the trigger, plus `resolve_touch` for the

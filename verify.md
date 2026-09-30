@@ -30,10 +30,11 @@ statement about the email. `didyoumean` is logged, never auto-applied.
 means a generic inbox, already handled by role-addressing in
 `research.md`.
 
-Held or dropped candidates don't fill today's quota; `/next` moves to
-the next pending row. A `rejected_verify` is about the address, not
-the company: research can come back with a different address on a
-later run, which is why the reason records the address that failed.
+Held or dropped candidates don't count toward the number Adam asked
+for. `/next` moves to the next pending row. A `rejected_verify` is about
+the address, not the company: research can come back with a different
+address on a later run, which is why the reason records the address
+that failed.
 
 ## Write-back
 

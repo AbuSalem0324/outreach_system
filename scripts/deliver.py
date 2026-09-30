@@ -93,10 +93,6 @@ def cmd_send(db: Supabase, args: argparse.Namespace) -> int:
         print(json.dumps({"delivered": False, "why": "draft_already_pending", "check": check}, indent=2))
         return 3
 
-    if db.quota_remaining() <= 0 and not args.force:
-        print(json.dumps({"delivered": False, "why": "quota_used_today"}, indent=2))
-        return 4
-
     # verify.md
     v = verify_email(email) if not args.skip_verify else {"decision": "proceed", "reason": "skipped", "result": "ok"}
     if v["decision"] == "hold":
@@ -160,7 +156,7 @@ def main() -> int:
     s.add_argument("--postal-address", default="")
     s.add_argument("--company-name", help="fallback if companies_seen has none")
     s.add_argument("--skip-verify", action="store_true", help="tests only")
-    s.add_argument("--force", action="store_true", help="ignore the daily cap; tests only")
+    s.add_argument("--force", action="store_true", help="ignored; no daily cap")
 
     r = sub.add_parser("reject")
     r.add_argument("--company-number", required=True)

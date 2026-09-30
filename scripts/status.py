@@ -70,7 +70,7 @@ def summary(db: Supabase) -> dict:
         by_status[r["status"]] = by_status.get(r["status"], 0) + 1
     return {
         "first_touches_today": used,
-        "quota_remaining": max(0, 10 - used),
+        "daily_cap": None,
         "drafts_awaiting_reaction": {"first_touch": pending_first, "follow_up": pending_follow},
         "pending_tasks": pending_tasks(db),
         "followups_due": due,
