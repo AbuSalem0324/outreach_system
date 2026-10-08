@@ -2,8 +2,9 @@
 
 Everything Adam does happens in the Hermes Telegram chat. Three kinds
 of input: a file, a slash command, a reaction. Hermes maps each to the
-scripts below and reads the relevant markdown before doing anything
-that needs judgement.
+scripts below. For `/next` and `o/to` the only document Hermes reads
+is `research-card.md`, which the scripts print with the work. The
+other markdown files are reference for Adam, not run-time reading.
 
 ## A CSV file
 
@@ -26,13 +27,14 @@ Deliver `n` successful first-touch drafts from the most recent campaign
 (or `--campaign <id>`). `n` is the only cap. There is no daily ceiling.
 
 1. `python3 scripts/next.py [--campaign <id>] --limit <still needed>`
-   prints a JSON bundle per candidate: Endole row, site summary, Companies
+   prints `research-card.md`, then a JSON bundle per candidate: Endole row, site summary, Companies
    House officers, Hunter emails, `check.md` decision. Candidates with
    a hard stop are already excluded by the script. `--limit` is this
    slice, not the run. After rejects, holds, and picks, call it again
    until `n` drafts have been delivered or no pending rows remain.
-2. For each bundle, Hermes runs `research.md` (and `draft.md` only
-   once the send target is known).
+2. For each bundle, Hermes follows the card printed above the
+   bundles. It does not open `research.md`, `draft.md`, or
+   `icp-definitions.md`.
 3. Per candidate, one of:
    - `python3 scripts/deliver.py send ...` when Stage 3 picked one
      relevant personal or fell through to generic,
@@ -52,8 +54,9 @@ a company that is not in a bundle.
 Resolves a picker. Hermes:
 
 1. `python3 scripts/pick.py resolve --company-number <n> <choice>`
-2. Reads `draft.md`, writes the body for that address (first-name
-   greeting if personal), `deliver.py send` with that `--email`.
+2. The script prints the card and the chosen recipient. Hermes writes
+   the relevance sentence and calls `deliver.py send` with that
+   `--email` and the stored angle. `deliver.py` builds the email.
 
 If only one company is `awaiting_pick`, `<company_number>` may be
 omitted. Do not draft until this command.

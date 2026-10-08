@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""deliver.py: the end of research.md and draft.md.
+"""deliver.py: the end of research-card.md.
 
-send:   verify the address, insert the contact as `new` with the draft on
-        the row, send the draft file to Telegram, record message_id.
+send:   build the first touch from fixed copy plus the one generated
+        sentence, verify the address, insert the contact as `new` with the
+        draft on the row, send the draft file to Telegram, record message_id.
 reject: mark the company rejected_research with a reason.
 
 Both update companies_seen so the company never resurfaces silently.
@@ -13,13 +14,11 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from pathlib import Path
 from typing import Any
 
 from check import check_email
 from common import (
     SOURCE,
-    UNSUB_URL,
     Supabase,
     Telegram,
     domain_from_email,
@@ -30,6 +29,7 @@ from common import (
     slug,
     today_str,
 )
+from first_touch import build, check_sentence
 from verify import verify_email
 
 
@@ -76,12 +76,8 @@ def cmd_reject(db: Supabase, args: argparse.Namespace) -> int:
 def cmd_send(db: Supabase, args: argparse.Namespace) -> int:
     email = args.email.strip().lower()
     company = company_row(db, args.company_number)
-    body = Path(args.body_file).read_text(encoding="utf-8").rstrip() + "\n"
-    unsub = UNSUB_URL.format(email=email)
-    if unsub not in body:
-        raise SystemExit(f"body is missing the pre-filled unsubscribe link: {unsub}")
-    if "\u2014" in body or "\u2014" in args.subject:
-        raise SystemExit("em dash found in draft; fix the copy")
+    angle = check_sentence("--angle", args.angle)
+    subject, body = build(company.get("icp_id"), email, args.buyer_name, args.relevance)
 
     # Backstop: check.md again on the address actually chosen
     check = check_email(db, email, company.get("domain"))
@@ -104,7 +100,7 @@ def cmd_send(db: Supabase, args: argparse.Namespace) -> int:
         print(json.dumps({"delivered": False, "why": "rejected_verify", "verify": v}, indent=2))
         return 5
 
-    notes = f"{today_str()} first touch. buyer={args.buyer_name or 'role-addressed'} ({args.buyer_role or '-'}). angle={args.angle}"
+    notes = f"{today_str()} first touch. buyer={args.buyer_name or 'role-addressed'} ({args.buyer_role or '-'}). angle={angle}"
     contact = {
         "email": email,
         "company_name": company.get("company_name") or args.company_name,
@@ -117,9 +113,9 @@ def cmd_send(db: Supabase, args: argparse.Namespace) -> int:
         "status": "new",
         "buyer_name": args.buyer_name or None,
         "buyer_role": args.buyer_role or None,
-        "angle": args.angle,
+        "angle": angle,
         "notes": notes,
-        "draft_subject": args.subject,
+        "draft_subject": subject,
         "draft_body": body,
         "email_verification_status": v.get("result") or "ok",
         **enrichment_fields(args.linkedin_url, args.phone, args.phone_type, args.postal_address, now_iso()),
@@ -129,7 +125,7 @@ def cmd_send(db: Supabase, args: argparse.Namespace) -> int:
     tg = Telegram()
     filename = f"{today_str()}_{slug(contact['company_name'])}.txt"
     caption = f"{contact['company_name']} · {args.buyer_role or 'role inbox'} · 👍 sent / 👎 skip"
-    message_id = tg.send_document(filename, draft_file(email, args.subject, body), caption)
+    message_id = tg.send_document(filename, draft_file(email, subject, body), caption)
     db.patch("contacts", {"id": f"eq.{row['id']}"}, {"telegram_message_id": message_id, "draft_delivered_at": now_iso()})
     db.set_outcome(args.company_number, "promoted_to_contacts", f"{email} → contacts {row['id']}")
     log("deliver=sent", contact_id=row["id"], message_id=message_id, file=filename)
@@ -148,8 +144,7 @@ def main() -> int:
     s.add_argument("--buyer-name", default="")
     s.add_argument("--buyer-role", default="")
     s.add_argument("--angle", required=True, help="one complete sentence; follow-ups reuse it verbatim")
-    s.add_argument("--subject", required=True)
-    s.add_argument("--body-file", required=True)
+    s.add_argument("--relevance", required=True, help="the one generated sentence of the first email")
     s.add_argument("--linkedin-url", default="")
     s.add_argument("--phone", default="")
     s.add_argument("--phone-type", default="")

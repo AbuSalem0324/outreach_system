@@ -23,6 +23,12 @@ USER_AGENT = "DataBardOutreach/2.0 (+https://databard.xyz)"
 SSL_CTX = ssl.create_default_context()
 UNSUB_URL = "https://www.databard.net/unsubscribe?e={email}"
 SOURCE = "endole_campaign"
+RESEARCH_CARD = Path(__file__).resolve().parents[1] / "research-card.md"
+
+
+def research_card() -> str:
+    """The one document Hermes works from. Printed with the work, not read up front."""
+    return RESEARCH_CARD.read_text(encoding="utf-8").rstrip() + "\n"
 
 
 def log(msg: str, **fields: Any) -> None:

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Offer a recipient picker on Telegram. Does not choose or draft."""
+"""Offer a recipient picker on Telegram. Does not choose or draft.
+
+resolve prints the research card above the chosen recipient, so the
+relevance sentence is written against the same rules as a straight send.
+"""
 
 from __future__ import annotations
 
@@ -9,7 +13,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from common import Supabase, Telegram, load_env, log, now_iso
+from common import Supabase, Telegram, load_env, log, now_iso, research_card
 
 PICKS_DIR = Path("/root/outreach/picks")
 
@@ -105,6 +109,11 @@ def cmd_resolve(args: argparse.Namespace) -> int:
         raise SystemExit(f"no pick file: {path}")
     payload = json.loads(path.read_text(encoding="utf-8"))
     chosen = resolve_choice(payload, args.choice)
+    if not args.no_card:
+        print(research_card())
+        print("===== CHOSEN (JSON) =====")
+        print("Sections 1 to 4 are already decided for this company: use this email and this angle.")
+        print("Write the relevance sentence (section 5), then deliver.py send.")
     print(json.dumps(chosen_payload(payload, chosen), indent=2, ensure_ascii=False))
     return 0
 
@@ -120,6 +129,7 @@ def main() -> int:
     r = sub.add_parser("resolve")
     r.add_argument("--company-number", required=True)
     r.add_argument("choice", help="1-based index or email")
+    r.add_argument("--no-card", action="store_true", help="JSON only")
     args = p.parse_args()
     if args.cmd == "offer":
         return cmd_offer(args)

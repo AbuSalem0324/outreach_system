@@ -12,7 +12,9 @@ order. Every other file does one job and defers to it. If anything here
 conflicts with `objective.md`, that file is right, fix the other one.
 
 Hermes pulls this repo from GitHub at the start of every run. The repo
-is the source of truth, not whatever is cached on the box.
+is the source of truth, not whatever is cached on the box. Pulling is
+not reading: the one document Hermes reads during a run is
+`research-card.md`, and the scripts print it.
 
 ## Files
 
@@ -22,6 +24,8 @@ is the source of truth, not whatever is cached on the box.
   already-filtered batch, plus explicit disqualifiers
 - `ingest.md`: Endole CSV in, campaign and `companies_seen` rows out
 - `check.md`: contact history gate before drafting
+- `research-card.md`: the one page Hermes works from at run time;
+  a condensed copy of the three files below, kept in step by hand
 - `research.md`: buyer, angle, and the disqualify path
 - `verify.md`: email deliverability gate before drafting
 - `draft.md`: voice, structure, Telegram delivery format
@@ -41,8 +45,10 @@ reading the markdown above.
 - `scripts/pick.py`: Telegram recipient picker when Stage 3 is ambiguous
 - `scripts/check.py`: contact history decision for one email
 - `scripts/verify.py`: MillionVerifier decision for one email
-- `scripts/deliver.py`: insert the contact, send the draft file, or
-  record a research rejection
+- `scripts/first_touch.py`: the fixed first-touch copy and the checks
+  on the generated sentences
+- `scripts/deliver.py`: build the email, insert the contact, send the
+  draft file, or record a research rejection
 - `scripts/followups.py`: build and deliver due follow-ups on demand
 - `scripts/status.py`: manual status flips (replied, dnc, unsub, closed)
 - `scripts/send_and_log_listener.py`: reaction handler

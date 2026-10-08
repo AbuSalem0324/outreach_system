@@ -6,8 +6,9 @@ and the caller enforces it by looping until that many drafts are delivered.
 
 Deterministic. For each pending companies_seen row, in CSV order: run
 check.md on the Endole email if present, scrape the company's own site,
-pull Companies House officers, and print one JSON bundle. Hermes reads
-research.md and draft.md against each bundle, then calls deliver.py.
+pull Companies House officers, and print one JSON bundle. The research
+card is printed above the bundles, so Hermes has the rules next to the
+work and reads nothing else. --no-card gives JSON only.
 
 Hard stops from check.md are applied here (rejected_check). Everything
 else is left to judgement.
@@ -28,7 +29,7 @@ from typing import Any
 from urllib.parse import urljoin
 
 from check import check_email
-from common import SSL_CTX, USER_AGENT, Supabase, http_json, load_env, log, now_iso
+from common import SSL_CTX, USER_AGENT, Supabase, http_json, load_env, log, now_iso, research_card
 from hunter import hunt_domain
 
 CH_BASE = "https://api.company-information.service.gov.uk"
@@ -302,6 +303,9 @@ def run(args: argparse.Namespace) -> int:
             hunter=hunter.get("status"),
         )
 
+    if bundles and not args.no_card:
+        print(research_card())
+        print("===== BUNDLES (JSON) =====")
     print(
         json.dumps(
             {
@@ -323,6 +327,7 @@ def main() -> int:
     p.add_argument("--campaign", help="campaign id; default latest")
     p.add_argument("--limit", type=int, help="bundles to prepare this call; not a daily cap")
     p.add_argument("--overscan", type=int, default=5, help="extra pending rows to fetch in case some hard-stop")
+    p.add_argument("--no-card", action="store_true", help="JSON only, without research-card.md above it")
     return run(p.parse_args())
 
 

@@ -17,6 +17,12 @@ reaction just sits. Nothing times out, escalates, or auto-sends.
 
 ## Read order
 
+For Adam, and for anyone changing the system. Hermes does not read
+these at run time: during `/next` and `o/to` it works from
+`research-card.md` alone, printed by the scripts with each bundle.
+When a rule changes in `research.md`, `draft.md`, or
+`icp-definitions.md`, change the card too.
+
 1. `commands.md`: what Adam can type and what each command triggers
 2. `icp-definitions.md`: what a good candidate looks like inside a
    batch Endole already filtered, and what disqualifies one

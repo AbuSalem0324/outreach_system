@@ -1,7 +1,9 @@
 # draft.md: Drafting the First Touch
 
-Hermes' job, after `research.md`, before `deliver.py send`. Turns the
-buyer, angle, and email into a ready-to-send file.
+Reference for the first email. Hermes supplies one sentence
+(`--relevance`); `scripts/first_touch.py` holds every fixed piece below
+and assembles the email. Change copy in both places: a test fails if
+they differ.
 
 ## Delivery: Telegram, one file per candidate
 
@@ -116,18 +118,19 @@ the fixed offer line in different words.
 
 ## Handoff
 
-Write the body to a temp file and call:
+No body file and no subject. Call:
 
 ```
 python3 scripts/deliver.py send --company-number <n> --email <e> \
   --buyer-name "<name or empty>" --buyer-role "<role>" \
-  --angle "<sentence>" --subject "<subject>" --body-file <path> \
+  --angle "<sentence>" --relevance "<sentence>" \
   --linkedin-url "<url, omit if none>" --phone "<number, omit if none>" \
   --phone-type "<direct|mobile|switchboard, omit if no phone>" \
   --postal-address "<trading address, omit if none>"
 ```
 
-`deliver.py` verifies the address, inserts the contact as `new` with
+`deliver.py` checks both sentences (one line, no em dash, no named
+source), builds subject and body, verifies the address, inserts the contact as `new` with
 the draft stored on the row, sends the file, and records the Telegram
 `message_id`. If verification holds or drops the address, nothing is
 inserted and the script says why.

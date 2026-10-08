@@ -1,6 +1,9 @@
 # research.md: Per-Candidate Research
 
-Hermes' job, run on each bundle `next.py` prints. Inputs: the Endole
+Reference. At run time Hermes works from `research-card.md`, the
+condensed version of this file; keep the two in step.
+
+Run on each bundle `next.py` prints. Inputs: the Endole
 row (`raw`), the site summary the script scraped, Companies House
 officers, Hunter personals/generics, the `check.md` decision. Output:
 a buyer, one angle, and an email, a picker, or a rejection with a
@@ -160,8 +163,8 @@ dossier.
 
 On a straight draft or after `o/to`: passed to `deliver.py send` as
 arguments `--email`, `--buyer-name` (empty string if role-addressed),
-`--buyer-role`, `--angle`, and the `--subject` and `--body-file` that
-`draft.md` produces. When known, also `--linkedin-url`, `--phone`,
+`--buyer-role`, `--angle`, and `--relevance` (the one generated
+sentence; `deliver.py` adds the fixed copy). When known, also `--linkedin-url`, `--phone`,
 `--phone-type`, and `--postal-address`. Omit an empty flag. Do not
 default `phone_type`. `To:` on the contact row is that email. Never
 leave it blank and never default it to candidate #1 without a pick.
