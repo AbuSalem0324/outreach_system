@@ -34,7 +34,7 @@ Every company that has been through the pipeline, keyed on
 | icp_id | text | |
 | campaign_id | uuid fk campaigns | |
 | csv_order | int | file order, `/next` walks it |
-| raw | jsonb | the whole Endole row |
+| raw | jsonb | the whole Endole row, plus `_site` when the website was looked up: url, source, grade, what matched |
 | outcome | text | see below |
 | reason | text | why |
 | first_seen_at, last_checked_at | timestamptz | |
@@ -42,7 +42,9 @@ Every company that has been through the pipeline, keyed on
 
 `outcome` values: `pending`, `in_research`, `awaiting_pick`,
 `promoted_to_contacts`, `rejected_ingest`, `rejected_research`,
-`rejected_check`, `rejected_verify`, `held_verify`, `held_review`
+`rejected_check`, `rejected_verify`, `held_verify`, `no_site_found`
+(no website in the export and none found by lookup or search; the
+searches tried are in `reason`), `held_review`
 (research parked it with a question for Adam, in `reason`),
 `seen_before`.
 Older rows carry

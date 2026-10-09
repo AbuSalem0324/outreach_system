@@ -27,10 +27,10 @@ RUN_IDLE_S = 3 * 60 * 60
 MAX_REJECT_STREAK = int(os.environ.get("OUTREACH_MAX_REJECT_STREAK", "8"))
 
 DELIVERED = "promoted_to_contacts"
-MODEL_DECLINED = {"rejected_research", "held_review"}
+MODEL_DECLINED = {"rejected_research", "held_review", "no_site_found"}
 RUN_OUTCOMES = (
     DELIVERED, "awaiting_pick", "held_verify", "rejected_verify",
-    "held_review", "rejected_research", "rejected_check", "rejected_ingest",
+    "held_review", "rejected_research", "no_site_found", "rejected_check", "rejected_ingest",
 )
 
 
@@ -113,7 +113,7 @@ def _named(rows: list[dict[str, Any]], outcome: str, key: str | None = None) -> 
 
 WHY = {
     "target_reached": "Target reached.",
-    "reject_streak": f"Stopped early: {MAX_REJECT_STREAK} companies in a row were rejected or held. "
+    "reject_streak": f"Stopped early: {MAX_REJECT_STREAK} companies in a row were rejected, held, or had no site found. "
                      "Check the reasons below, then /next again to carry on.",
     "no_pending": "No pending companies left in this campaign.",
     "no_active_run": "No run in progress. Start one with: python3 scripts/next.py --target <n>",
@@ -134,6 +134,7 @@ def report(run: dict[str, Any] | None, rows: list[dict[str, Any]], why: str) -> 
         "held_verify": _named(rows, "held_verify", "reason"),
         "rejected_verify": _named(rows, "rejected_verify", "reason"),
         "rejected_research": _named(rows, "rejected_research", "reason"),
+        "no_site_found": _named(rows, "no_site_found", "searched"),
         "skipped_by_script": sum(1 for r in rows if r.get("outcome") in ("rejected_check", "rejected_ingest")),
         "instruction": "Reply to Adam once with this report, including each rejection reason and each held "
                        "question. Do not call next.py again and do not research any other company.",

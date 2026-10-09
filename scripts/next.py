@@ -15,6 +15,11 @@ Deterministic. For the next pending companies_seen row, in CSV order:
 run check.md on the Endole email if present, scrape the company's own
 site, pull Companies House officers, query Hunter. Hard stops from
 check.md are applied here (rejected_check).
+
+A row with no website is never rejected here. site_lookup.py tries the
+Endole email's domain and Hunter by company name, checks any candidate
+against the company number, postcode and registered name, and failing
+that hands the company to Hermes to search for (card section 0).
 """
 
 from __future__ import annotations
@@ -33,13 +38,16 @@ from urllib.parse import urljoin
 
 from check import check_email
 from common import SSL_CTX, USER_AGENT, Supabase, http_json, load_env, log, now_iso, research_card
-from hunter import hunt_domain
+from hunter import hunt_company, hunt_domain
 import run_state as rs
+import site_lookup as sl
 
 CH_BASE = "https://api.company-information.service.gov.uk"
 SCRAPE_TIMEOUT_S = 12
 MAX_PAGES = 6
 INTEREST_PATHS = ("about", "contact", "team", "careers", "people", "our-story", "who-we-are", "history")
+# Where a UK site usually prints its registered name and company number.
+VERIFY_PATHS = ("terms", "privacy", "legal", "conditions")
 MAILTO_RE = re.compile(r"mailto:([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})", re.I)
 EMAIL_RE = re.compile(r"\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b", re.I)
 SITE_KEYWORDS = (
@@ -116,9 +124,12 @@ def clean_text(parts: list[str]) -> str:
     return re.sub(r"\s+", " ", text)
 
 
-def scrape_site(website: str | None) -> dict[str, Any]:
+def scrape_site(website: str | None, *, verify: bool = False) -> dict[str, Any]:
+    """verify=True also reads the legal pages and returns the full text as `_text`."""
     if not website:
         return {"status": "no_website"}
+    wanted = INTEREST_PATHS + (VERIFY_PATHS if verify else ())
+    max_pages = MAX_PAGES + (3 if verify else 0)
     url = website if "://" in website else f"https://{website}"
     status, final_url, html = fetch_html(url)
     if not html:
@@ -129,7 +140,7 @@ def scrape_site(website: str | None) -> dict[str, Any]:
     seen = {final_url}
     for href in home.links:
         low = href.lower()
-        if any(tok in low for tok in INTEREST_PATHS) and len(pages) < MAX_PAGES:
+        if any(tok in low for tok in wanted) and len(pages) < max_pages:
             full = urljoin(final_url, href)
             if full in seen or urllib.parse.urlparse(full).netloc != urllib.parse.urlparse(final_url).netloc:
                 continue
@@ -159,6 +170,7 @@ def scrape_site(website: str | None) -> dict[str, Any]:
             excerpts[key] = t[:1500]
 
     return {
+        **({"_text": combined} if verify else {}),
         "status": "ok",
         "final_url": final_url,
         "site_name": name,
@@ -240,15 +252,27 @@ PAGE = 20
 NEXT_CMD = "python3 scripts/next.py"
 
 
-def build_bundle(db: Supabase, row: dict[str, Any], campaign: dict[str, Any], check: dict[str, Any] | None) -> dict[str, Any]:
+def build_bundle(db: Supabase, row: dict[str, Any], campaign: dict[str, Any], check: dict[str, Any] | None,
+                 site: dict[str, Any] | None = None, hunter: dict[str, Any] | None = None,
+                 tried: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """site and hunter are passed in when the website lookup already fetched them."""
     cn = row["company_number"]
-    site = scrape_site(row.get("website"))
-    hunter = hunt_domain(row.get("domain"))
+    domain = sl.company_domain(row) if row.get("website") else None
+    site = site or scrape_site(row.get("website"))
+    site.pop("_text", None)
+    hunter = hunter or hunt_domain(domain)
     bundle = {
         "company_number": cn,
         "company_name": row.get("company_name"),
         "website": row.get("website"),
-        "domain": row.get("domain"),
+        "domain": domain,
+        "site_record": (row.get("raw") or {}).get("_site"),
+        **({"site_search": {
+            "needed": True,
+            "why": "No website on record and the script could not confirm one. Card section 0.",
+            "registered_postcode": sl.row_postcode(row),
+            "already_tried": tried or [],
+        }} if not row.get("website") else {}),
         "sic_code": row.get("sic_code"),
         "icp_id": row.get("icp_id") or campaign.get("icp_id"),
         "endole": row.get("raw"),
@@ -290,10 +314,6 @@ def next_pending(db: Supabase, campaign: dict[str, Any]) -> dict[str, Any] | Non
             return None
         for row in page:
             cn = row["company_number"]
-            if not row.get("website"):
-                db.set_outcome(cn, "rejected_ingest", "no_website")
-                log("stage=skip", company_number=cn, reason="no_website")
-                continue
             check = None
             endole_email = (row.get("email") or "").lower() or None
             if endole_email:
@@ -303,7 +323,16 @@ def next_pending(db: Supabase, campaign: dict[str, Any]) -> dict[str, Any] | Non
                     log("stage=check", company_number=cn, decision="hard_stop", reason=check["reason"])
                     continue
             db.set_outcome(cn, "in_research")
-            bundle = build_bundle(db, row, campaign, check)
+            found, tried = (None, [])
+            if not row.get("website"):
+                # Never a rejection: a missing website is something to look up.
+                found, tried = sl.resolve(row, scrape_site, hunt_company)
+                if found:
+                    row = sl.record(db, row, found)
+                else:
+                    log("site=unresolved", company_number=cn, tried=len(tried))
+            bundle = build_bundle(db, row, campaign, check, site=(found or {}).get("site"),
+                                  hunter=(found or {}).get("hunter"), tried=tried)
             rs.cache_bundle(bundle)
             return bundle
 

@@ -37,6 +37,8 @@ class FakeDb:
     def select(self, table, **p):
         if table == "campaigns":
             return [{"id": "c1", "name": "t", "icp_id": "home-turf-fmcg-v1"}]
+        if table == "contacts":
+            return []
         assert table == "companies_seen", table
         rows = self.rows
         if "company_number" in p:
@@ -52,6 +54,11 @@ class FakeDb:
         key = "last_checked_at" if p.get("order", "").startswith("last_checked_at") else "csv_order"
         rows = sorted(rows, key=lambda r: r[key] or "")
         return rows[: int(p["limit"])] if "limit" in p else rows
+
+    def patch(self, table, filters, payload):
+        row = next(r for r in self.rows if r["company_number"] == filters["company_number"].removeprefix("eq."))
+        row.update(payload)
+        return [row]
 
     def set_outcome(self, cn, outcome, reason=None):
         row = next(r for r in self.rows if r["company_number"] == cn)
@@ -72,8 +79,11 @@ class Loop(unittest.TestCase):
         for f in Path(_TMP).rglob("*.json"):
             f.unlink()
         self.built = []
-        nx.build_bundle = lambda db, row, campaign, check: self.built.append(row["company_number"]) or {
-            "company_number": row["company_number"], "company_name": row["company_name"]}
+        nx.build_bundle = lambda db, row, campaign, check, **kw: self.built.append(row["company_number"]) or {
+            "company_number": row["company_number"], "company_name": row["company_name"],
+            "website": row.get("website"), "tried": kw.get("tried")}
+        nx.scrape_site = lambda url, verify=False: {"status": "unreachable_http_0", "final_url": url}
+        nx.hunt_company = lambda name: {"status": "ok", "domain": None}
         self.db = FakeDb()
 
     def step(self, target=None):
@@ -151,14 +161,42 @@ class Loop(unittest.TestCase):
         self.finish(out, "send")
         self.assertIn("bundle", self.step())
 
-    def test_no_website_rows_are_skipped_by_the_script_and_pending_can_run_out(self):
-        self.db = FakeDb(n=3, no_website=(1, 2))
+    def test_no_website_row_is_handed_out_never_rejected(self):
+        self.db = FakeDb(n=2, no_website=(1,))
         out = self.step(5)
-        self.assertEqual(out["bundle"]["company_number"], "00000003")
+        self.assertEqual(out["bundle"]["company_number"], "00000001")
+        self.assertIsNone(out["bundle"]["website"])
+        self.assertEqual(self.db.outcome("00000001"), "in_research")
+        self.assertFalse(any(r["outcome"] == "rejected_ingest" for r in self.db.rows))
+
+    def test_pending_can_run_out(self):
+        self.db = FakeDb(n=1)
+        out = self.step(5)
         self.finish(out, "send")
-        out = self.step()
-        self.assertEqual(out["why"], "no_pending")
-        self.assertEqual(out["skipped_by_script"], 2)
+        self.assertEqual(self.step()["why"], "no_pending")
+
+    def test_email_domain_site_is_recorded_when_it_matches(self):
+        self.db = FakeDb(n=1, no_website=(1,))
+        self.db.rows[0].update(email="office@sultan.example", raw={"Postcode": "BL6 4SB"})
+        nx.scrape_site = lambda url, verify=False: {"status": "ok", "final_url": "https://www.sultan.example/",
+                                                    "_text": "Unit 4b Cranfield Road, Bolton BL6 4SB"}
+        out = self.step(1)
+        row = self.db.rows[0]
+        self.assertEqual(out["bundle"]["website"], "https://www.sultan.example/")
+        self.assertEqual(row["domain"], "sultan.example")
+        self.assertEqual(row["raw"]["_site"]["grade"], "verified")
+        self.assertEqual(row["raw"]["_site"]["source"], "endole_email_domain")
+
+    def test_no_site_found_counts_toward_the_streak(self):
+        import site_lookup as sl
+        self.db = FakeDb(n=20, no_website=range(1, 21))
+        out = self.step(5)
+        for _ in range(rs.MAX_REJECT_STREAK):
+            cn = out["bundle"]["company_number"]
+            sl.cmd_none(self.db, ns(cn, searched="name + town, name + postcode"))
+            out = self.step()
+        self.assertEqual(out["why"], "reject_streak")
+        self.assertEqual(len(out["no_site_found"]), rs.MAX_REJECT_STREAK)
 
     def test_bare_next_without_a_run(self):
         self.assertEqual(self.step()["why"], "no_active_run")
@@ -179,6 +217,12 @@ class InHandGuards(unittest.TestCase):
         with self.assertRaises(SystemExit):
             deliver.cmd_reject(self.db, ns("00000001", reason="not a fit"))
         self.assertEqual(self.db.outcome("00000001"), "in_research")
+
+    def test_send_refuses_a_company_with_no_website(self):
+        self.db.rows[0]["website"] = None
+        with self.assertRaises(SystemExit) as cm:
+            deliver.cmd_send(self.db, ns("00000001", email="a@b.co"))
+        self.assertIn("no website on record", str(cm.exception))
 
     def test_send_refuses_a_company_never_handed_out(self):
         with self.assertRaises(SystemExit) as cm:

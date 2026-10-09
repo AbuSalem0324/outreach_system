@@ -39,12 +39,21 @@ def _item(e: dict[str, Any], *, kind: str) -> dict[str, Any]:
 
 def hunt_domain(domain: str | None) -> dict[str, Any]:
     """One domain-search. Personals and generics split. Never raises."""
+    return _search("domain", domain)
+
+
+def hunt_company(name: str | None) -> dict[str, Any]:
+    """Domain-search by company name. The result's `domain` is Hunter's guess, not a fact."""
+    return _search("company", name)
+
+
+def _search(field: str, domain: str | None) -> dict[str, Any]:
     if not domain:
         return {"status": "no_domain", "personals": [], "generics": [], "pattern": None}
     key = os.environ.get("HUNTER_API_KEY")
     if not key:
         return {"status": "no_key", "personals": [], "generics": [], "pattern": None}
-    qs = urllib.parse.urlencode({"domain": domain, "api_key": key})
+    qs = urllib.parse.urlencode({field: domain, "api_key": key})
     status, data = http_json(f"{HUNTER_SEARCH}?{qs}", timeout=15)
     if status == 429:
         log("stage=hunter", domain=domain, note="rate_limited")
@@ -70,7 +79,7 @@ def hunt_domain(domain: str | None) -> dict[str, Any]:
             personals.append(_item(e, kind="personal"))
     out = {
         "status": "ok",
-        "domain": payload.get("domain") or domain,
+        "domain": payload.get("domain") or (domain if field == "domain" else None),
         "pattern": payload.get("pattern"),
         "organization": payload.get("organization"),
         "personals": personals,

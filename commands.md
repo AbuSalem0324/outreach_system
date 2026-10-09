@@ -49,13 +49,23 @@ The loop is in `next.py`, not in Hermes. One company per call.
    Adam with each question, held on verification, rejected in research
    with each reason. Do not narrate the work.
 
+A company with no website in the export is not rejected. The script
+tries the Endole email's domain, then Hunter by company name, and
+checks each against the company number, postcode and registered name.
+If neither holds up, Hermes searches the web and records the result
+with `scripts/site_lookup.py set`, or `site_lookup.py none` if there
+is nothing to find (`no_site_found`, listed in the stop report).
+
 What the script enforces, whatever Hermes does:
 
 - A company handed out and not finished is handed out again. There is
   no skipping ahead.
 - `reject` and `hold` only work on the company in hand.
+- `send` is refused while the company has no website on record.
+- A site the script cannot match to the company needs `--evidence`,
+  and the draft's caption says the site was not matched.
 - The run stops at `n` delivered, when pending runs out, or after 8
-  rejections or holds in a row. Typing `/next` again carries on.
+  rejections, holds or no-site outcomes in a row. Typing `/next` again carries on.
 - Hermes is not told how many companies are left.
 
 Each of those logs a `guardrail=` line to stderr when it bites.

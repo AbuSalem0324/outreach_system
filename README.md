@@ -43,6 +43,8 @@ reading the markdown above.
 - `scripts/next.py`: the `/next` loop: one research bundle per call,
   until the target is delivered
 - `scripts/run_state.py`: run definition, counts, stop conditions
+- `scripts/site_lookup.py`: find and check a website when the export
+  has none
 - `scripts/hunter.py`: Hunter.io domain-search (fetch only)
 - `scripts/pick.py`: Telegram recipient picker when Stage 3 is ambiguous
 - `scripts/check.py`: contact history decision for one email

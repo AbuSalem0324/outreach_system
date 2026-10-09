@@ -22,6 +22,32 @@ company's own site, Companies House, or a plain web search result.
 Nothing invented, nothing assumed to sound researched. A rejection
 needs an observed reason too. "Not a fit" is not a reason.
 
+## 0. No website in the bundle
+
+Only when the bundle has `site_search`. The script has already tried
+the Endole email's domain and Hunter; `already_tried` shows what
+failed, so do not repeat those. Search the web for the company name
+with its town or `registered_postcode`. Then one of:
+
+```
+python3 scripts/site_lookup.py set --company-number <n> --url <url>
+```
+
+The script loads the site and looks for the company number, postcode,
+or registered name. If it accepts, it prints a fresh bundle: carry on
+from section 1. If it refuses, the site may belong to a namesake. Try
+another result, or add `--evidence "<what on the site ties it to this
+company>"` if you can point to something specific. Do not guess.
+
+```
+python3 scripts/site_lookup.py none --company-number <n> \
+  --searched "<the searches you ran>"
+```
+
+when two or three different searches turn up no site of their own. A
+directory listing or a Companies House page is not their site. This is
+an outcome, not a rejection: then run `python3 scripts/next.py`.
+
 ## 1. Disqualify?
 
 Run one plain web search on the company name. Not optional: an
@@ -130,7 +156,8 @@ Only when observed. Omit the flag otherwise.
 
 ## Finish
 
-Exactly one of these four for this company.
+Exactly one of these four for this company (or `site_lookup.py none`
+from section 0).
 
 Send:
 

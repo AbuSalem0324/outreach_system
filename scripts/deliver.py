@@ -119,6 +119,12 @@ def cmd_send(db: Supabase, args: argparse.Namespace) -> int:
         log("guardrail=not_in_hand", verb="send", company_number=args.company_number, outcome=was)
         raise SystemExit(f"send refused: {args.company_number} has outcome={was}; it was not handed out by next.py or a picker")
     follow_on = {"next": NEXT_CMD} if was == "in_research" else {}
+    if not company.get("website"):
+        log("guardrail=send_without_site", company_number=args.company_number)
+        raise SystemExit(
+            "send refused: no website on record for this company. Find it and run "
+            "site_lookup.py set, or finish with site_lookup.py none (card section 0)."
+        )
     angle = check_sentence("--angle", args.angle)
     subject, body = build(company.get("icp_id"), email, args.buyer_name, args.relevance)
 
@@ -170,7 +176,9 @@ def cmd_send(db: Supabase, args: argparse.Namespace) -> int:
 
     tg = Telegram()
     filename = f"{today_str()}_{slug(contact['company_name'])}.txt"
-    caption = f"{contact['company_name']} · {args.buyer_role or 'role inbox'} · 👍 sent / 👎 skip"
+    site_record = (company.get("raw") or {}).get("_site") or {}
+    unsure = f" · ⚠ site not matched by script: {site_record.get('url')}" if site_record.get("grade") == "unverified" else ""
+    caption = f"{contact['company_name']} · {args.buyer_role or 'role inbox'}{unsure} · 👍 sent / 👎 skip"
     message_id = tg.send_document(filename, draft_file(email, subject, body), caption)
     db.patch("contacts", {"id": f"eq.{row['id']}"}, {"telegram_message_id": message_id, "draft_delivered_at": now_iso()})
     db.set_outcome(args.company_number, "promoted_to_contacts", f"{email} → contacts {row['id']}")
