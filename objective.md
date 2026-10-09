@@ -43,6 +43,8 @@ These hold regardless of which stage is running. No exception clause.
   `outreach 10` means 10 successful draft deliveries this run. Rejects,
   holds, and picks do not count. Follow-ups never count toward it.
   Stop when that many drafts are in the chat, or no pending rows remain.
+  `next.py` does the counting and hands out one company at a time; a
+  long streak of rejections also stops the run, for Adam to look at.
   Do not invent a daily 10.
 - **Four touches, then stop.** Emails at day 0, +3, +7. LinkedIn
   alongside touch 3, if a URL was stored. Letter, then call, as touch

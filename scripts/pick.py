@@ -57,7 +57,7 @@ def cmd_offer(args: argparse.Namespace) -> int:
     db = Supabase()
     db.set_outcome(cn, "awaiting_pick", "hunter picker; no To until o/to")
     log("pick=offered", company_number=cn, message_id=message_id, n=len(payload.get("candidates") or []))
-    print(json.dumps({"offered": True, "company_number": cn, "telegram_message_id": message_id, "file": str(dest)}, indent=2))
+    print(json.dumps({"offered": True, "company_number": cn, "telegram_message_id": message_id, "file": str(dest), "next": "python3 scripts/next.py"}, indent=2))
     return 0
 
 

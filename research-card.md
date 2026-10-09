@@ -5,10 +5,13 @@ This is the only document Hermes reads during `/next` and `o/to`.
 files (`research.md`, `draft.md`, `icp-definitions.md`) are reference
 for Adam. If they disagree with this card, tell Adam; do not pick one.
 
-You have one company bundle. Work on that company only. You do not
-write the email: you supply a buyer, an address, an angle, and one
-relevance sentence, and `deliver.py` assembles the rest from fixed
-copy. Finish with exactly one command from "Finish" below.
+You have one company. Work on that company only, and take the time
+it needs: there is no batch, and you are not told how many are left.
+You do not write the email: you supply a buyer, an address, an angle,
+and one relevance sentence, and `deliver.py` assembles the rest from
+fixed copy. Finish with exactly one command from "Finish" below, then
+ask `next.py` for the next company. `next.py` decides when the run is
+over, not you.
 
 ICP for this card: `home-turf-fmcg-v1`.
 
@@ -37,6 +40,10 @@ Reject only on one of these, with the evidence in the reason:
 - A shell, holding company, or property vehicle with no operation
 - Site is dead, parked, or abandoned
 - Nothing true to hang an angle on (see 4)
+
+A doubt is not a disqualifier. If the evidence is mixed, or you cannot
+tell whether one of these applies, hold the company with one question
+for Adam. Do not reject it to move on.
 
 What a buyer looks like, none of it required: a physical operation
 (production line, cold store, fleet, several sites, shifts), sells to
@@ -123,7 +130,7 @@ Only when observed. Omit the flag otherwise.
 
 ## Finish
 
-One of these, then stop.
+Exactly one of these four for this company.
 
 Send:
 
@@ -167,3 +174,16 @@ python3 scripts/deliver.py reject --company-number <n> \
 
 "Acquired by X in 2025 per trade press" is a reason. "Not a fit" is
 not.
+
+Hold, when Adam needs to decide something you cannot:
+
+```
+python3 scripts/deliver.py hold --company-number <n> \
+  --question "<the one thing Adam needs to decide, and what you saw>"
+```
+
+## Then
+
+Run `python3 scripts/next.py`. It prints either the next company or a
+stop report. On a stop report, reply to Adam once with what it says
+and stop. Do not research a company `next.py` did not give you.

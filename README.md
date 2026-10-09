@@ -40,7 +40,9 @@ reading the markdown above.
 
 - `scripts/common.py`: env loading, Supabase and Telegram helpers
 - `scripts/ingest.py`: CSV to `campaigns` and `companies_seen`
-- `scripts/next.py`: assemble research bundles for the `--limit` slice
+- `scripts/next.py`: the `/next` loop: one research bundle per call,
+  until the target is delivered
+- `scripts/run_state.py`: run definition, counts, stop conditions
 - `scripts/hunter.py`: Hunter.io domain-search (fetch only)
 - `scripts/pick.py`: Telegram recipient picker when Stage 3 is ambiguous
 - `scripts/check.py`: contact history decision for one email

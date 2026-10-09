@@ -26,24 +26,39 @@ skipped by `/next` unless asked otherwise.
 Deliver `n` successful first-touch drafts from the most recent campaign
 (or `--campaign <id>`). `n` is the only cap. There is no daily ceiling.
 
-1. `python3 scripts/next.py [--campaign <id>] --limit <still needed>`
-   prints `research-card.md`, then a JSON bundle per candidate: Endole row, site summary, Companies
-   House officers, Hunter emails, `check.md` decision. Candidates with
-   a hard stop are already excluded by the script. `--limit` is this
-   slice, not the run. After rejects, holds, and picks, call it again
-   until `n` drafts have been delivered or no pending rows remain.
-2. For each bundle, Hermes follows the card printed above the
-   bundles. It does not open `research.md`, `draft.md`, or
-   `icp-definitions.md`.
-3. Per candidate, one of:
+The loop is in `next.py`, not in Hermes. One company per call.
+
+1. `python3 scripts/next.py --target <n> [--campaign <id>]` starts the
+   run and prints `research-card.md`, then one JSON bundle: Endole row,
+   site summary, Companies House officers, Hunter emails, `check.md`
+   decision. Hard stops are already excluded by the script.
+2. Hermes follows the card for that one company. It does not open
+   `research.md`, `draft.md`, or `icp-definitions.md`.
+3. One outcome for that company:
    - `python3 scripts/deliver.py send ...` when Stage 3 picked one
      relevant personal or fell through to generic,
    - `python3 scripts/pick.py offer --company-number <n> --file <json>`
      when more than one personal and no single relevant title,
    - `python3 scripts/deliver.py reject --company-number <n>
-     --reason "<why>"`.
-4. Reply once, when the run stops: delivered, awaiting pick, held on
-   verification, rejected in research. Do not narrate the work.
+     --reason "<why>"`,
+   - `python3 scripts/deliver.py hold --company-number <n>
+     --question "<what Adam needs to decide>"` when in doubt.
+4. `python3 scripts/next.py` (no arguments) for the next company. Back
+   to step 2, until it prints a stop report instead of a bundle.
+5. Reply once with the stop report: delivered, awaiting pick, held for
+   Adam with each question, held on verification, rejected in research
+   with each reason. Do not narrate the work.
+
+What the script enforces, whatever Hermes does:
+
+- A company handed out and not finished is handed out again. There is
+  no skipping ahead.
+- `reject` and `hold` only work on the company in hand.
+- The run stops at `n` delivered, when pending runs out, or after 8
+  rejections or holds in a row. Typing `/next` again carries on.
+- Hermes is not told how many companies are left.
+
+Each of those logs a `guardrail=` line to stderr when it bites.
 
 If `n` is omitted, do not assume 10 and do not drain the campaign.
 If pending is gone before `n` drafts, say so and stop. Don't research
@@ -60,6 +75,12 @@ Resolves a picker. Hermes:
 
 If only one company is `awaiting_pick`, `<company_number>` may be
 omitted. Do not draft until this command.
+
+## `/requeue <company_number>`
+
+`python3 scripts/deliver.py requeue --company-number <n>`. Puts a held
+or wrongly rejected company back to `pending`, so the next run picks
+it up. Held companies and their questions show in `/status`.
 
 ## `/followups`
 
@@ -85,7 +106,7 @@ company Adam brings up outside a campaign.
 
 ## `/status`
 
-Quota used today, drafts awaiting a reaction, follow-ups due, open
+Companies held for Adam, quota used today, drafts awaiting a reaction, follow-ups due, open
 sequences. `python3 scripts/status.py summary`.
 
 ## Reactions

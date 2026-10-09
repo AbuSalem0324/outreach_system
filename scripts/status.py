@@ -68,7 +68,9 @@ def summary(db: Supabase) -> dict:
     by_status = {}
     for r in db.select("contacts", select="status"):
         by_status[r["status"]] = by_status.get(r["status"], 0) + 1
+    held = db.select("companies_seen", outcome="eq.held_review", select="company_number,company_name,reason")
     return {
+        "held_for_adam": held,
         "first_touches_today": used,
         "daily_cap": None,
         "drafts_awaiting_reaction": {"first_touch": pending_first, "follow_up": pending_follow},
