@@ -301,6 +301,7 @@ def build_bundle(db: Supabase, row: dict[str, Any], campaign: dict[str, Any], ch
         "website": row.get("website"),
         "domain": domain,
         "site_record": (row.get("raw") or {}).get("_site"),
+        **({"adam_note": (row.get("raw") or {})["_adam_note"]} if (row.get("raw") or {}).get("_adam_note") else {}),
         **({"site_search": {
             "needed": True,
             "why": "No website on record and the script could not confirm one. Card section 0.",

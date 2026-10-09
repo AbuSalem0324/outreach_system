@@ -15,6 +15,10 @@ fixed copy. The job ends with exactly one command from "Finish".
 
 ICP for this card: `home-turf-fmcg-v1`.
 
+If the JSON has `adam_note`, Adam has already looked at this company
+and answered a question about it. His answer settles that question:
+act on it, and do not hold the company on the same point again.
+
 ## Hard rule
 
 Every claim traces to something observed: the Endole row, the

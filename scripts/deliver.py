@@ -7,6 +7,9 @@ send:   build the first touch from fixed copy plus the one generated
 reject: mark the company rejected_research with a reason.
 hold:   park the company for Adam with one question (held_review).
 requeue: put a company back to pending. Adam's call, not research's.
+answer: Adam's reply to a held question; the company goes back for
+        research with the reply attached to its brief.
+drop:   Adam's decision that a held company is out.
 
 reject and hold only work on the company the run has handed out, so a
 run cannot clear rows it was never given.
@@ -100,6 +103,38 @@ def cmd_reject(db: Supabase, args: argparse.Namespace) -> int:
 
 def cmd_hold(db: Supabase, args: argparse.Namespace) -> int:
     return decline(db, args, "hold", "held_review", args.question)
+
+
+def adam_can_decide(db: Supabase, company_number: str) -> dict[str, Any]:
+    company = company_row(db, company_number)
+    if company.get("outcome") == "promoted_to_contacts":
+        raise SystemExit("already a contact; use /close or /dnc on the email instead")
+    if company.get("outcome") == "in_research":
+        raise SystemExit("a research job has this company in hand right now; wait for it to finish")
+    return company
+
+
+def cmd_answer(db: Supabase, args: argparse.Namespace) -> int:
+    note = (args.note or "").strip()
+    if not note:
+        raise SystemExit("answer needs --note with what Adam said")
+    company = adam_can_decide(db, args.company_number)
+    raw = {**(company.get("raw") or {}), "_adam_note": {
+        "note": note, "question": company.get("reason") if company.get("outcome") == "held_review" else None, "at": now_iso()}}
+    db.patch("companies_seen", {"company_number": f"eq.{args.company_number}"}, {"raw": raw})
+    db.set_outcome(args.company_number, "pending", f"Adam answered: {note}")
+    print(json.dumps({"company_number": args.company_number, "outcome": "pending",
+                      "say": f"Noted for {company.get('company_name')}. It goes back for research with your answer attached, on the next run."}))
+    return 0
+
+
+def cmd_drop(db: Supabase, args: argparse.Namespace) -> int:
+    company = adam_can_decide(db, args.company_number)
+    reason = "Adam: " + ((args.reason or "").strip() or "dropped after review")
+    db.set_outcome(args.company_number, "rejected_research", reason)
+    print(json.dumps({"company_number": args.company_number, "outcome": "rejected_research",
+                      "say": f"{company.get('company_name')} dropped."}))
+    return 0
 
 
 def cmd_requeue(db: Supabase, args: argparse.Namespace) -> int:
@@ -218,9 +253,19 @@ def main() -> int:
     q = sub.add_parser("requeue")
     q.add_argument("--company-number", required=True)
 
+    a = sub.add_parser("answer")
+    a.add_argument("--company-number", required=True)
+    a.add_argument("--note", required=True, help="what Adam said, in his words")
+
+    d = sub.add_parser("drop")
+    d.add_argument("--company-number", required=True)
+    d.add_argument("--reason", default="")
+
     args = p.parse_args()
     db = Supabase()
-    return {"send": cmd_send, "reject": cmd_reject, "hold": cmd_hold, "requeue": cmd_requeue}[args.cmd](db, args)
+    cmds = {"send": cmd_send, "reject": cmd_reject, "hold": cmd_hold, "requeue": cmd_requeue,
+            "answer": cmd_answer, "drop": cmd_drop}
+    return cmds[args.cmd](db, args)
 
 
 if __name__ == "__main__":

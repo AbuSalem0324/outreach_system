@@ -102,6 +102,24 @@ Resolves a picker. Hermes:
 If only one company is `awaiting_pick`, `<company_number>` may be
 omitted. Do not draft until this command.
 
+## Held companies: `o/ answer`, `o/ drop`
+
+A research job that cannot decide parks the company with a question.
+`o/ status` lists them. Adam settles each one of two ways:
+
+- `o/ answer <company_number> <his answer>` runs
+  `python3 scripts/deliver.py answer --company-number <n> --note "<his
+  answer, in his words>"`. The company goes back to `pending` with the
+  answer attached, and the next research job sees it and acts on it.
+- `o/ drop <company_number> [why]` runs
+  `python3 scripts/deliver.py drop --company-number <n> --reason
+  "<why>"`. The company is out (`rejected_research`, reason prefixed
+  `Adam:`).
+
+If Adam answers a held question in plain words without the command,
+work out which of the two he means and run it. If it is not clear
+which company or which way, ask. Reply with the `say` line.
+
 ## `/requeue <company_number>`
 
 `python3 scripts/deliver.py requeue --company-number <n>`. Puts a held

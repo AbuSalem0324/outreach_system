@@ -16,6 +16,7 @@ import next as nx  # noqa: E402
 import run_state as rs  # noqa: E402
 
 T0 = datetime(2026, 10, 9, 9, 0, tzinfo=timezone.utc)
+REAL_BUILD = nx.build_bundle  # tests below swap nx.build_bundle for a stub
 
 
 class FakeDb:
@@ -26,7 +27,7 @@ class FakeDb:
         self.rows = [
             {"company_number": f"{i:08d}", "company_name": f"Co {i}", "campaign_id": "c1", "csv_order": i,
              "website": None if i in no_website else f"co{i}.example", "domain": f"co{i}.example",
-             "email": None, "outcome": "pending", "reason": None, "last_checked_at": None}
+             "email": None, "outcome": "pending", "reason": None, "last_checked_at": None, "raw": {}}
             for i in range(1, n + 1)
         ]
 
@@ -228,6 +229,29 @@ class InHandGuards(unittest.TestCase):
         with self.assertRaises(SystemExit) as cm:
             deliver.cmd_send(self.db, ns("00000002", email="a@b.co"))
         self.assertIn("send refused", str(cm.exception))
+
+    def test_answer_sends_it_back_with_adams_note_attached(self):
+        deliver.cmd_hold(self.db, ns("00000001", question="Alan's title is not confirmed, is he the buyer?"))
+        deliver.cmd_answer(self.db, ns("00000001", note="Yes, Alan runs it. Send to him."))
+        row = self.db.rows[0]
+        self.assertEqual(row["outcome"], "pending")
+        self.assertEqual(row["raw"]["_adam_note"]["note"], "Yes, Alan runs it. Send to him.")
+        self.assertIn("Alan's title", row["raw"]["_adam_note"]["question"])
+        bundle = REAL_BUILD(self.db, {**row, "website": None}, {"id": "c1"}, None, site={"status": "no_website"}, hunter={})
+        self.assertEqual(bundle["adam_note"]["note"], "Yes, Alan runs it. Send to him.")
+
+    def test_drop_rejects_in_adams_name(self):
+        deliver.cmd_hold(self.db, ns("00000001", question="Is this one in scope?"))
+        deliver.cmd_drop(self.db, ns("00000001", reason="too small"))
+        self.assertEqual(self.db.outcome("00000001"), "rejected_research")
+        self.assertEqual(self.db.rows[0]["reason"], "Adam: too small")
+
+    def test_adam_cannot_decide_a_company_a_job_has_in_hand_or_a_contact(self):
+        with self.assertRaises(SystemExit):
+            deliver.cmd_drop(self.db, ns("00000001", reason=""))
+        self.db.set_outcome("00000003", "promoted_to_contacts")
+        with self.assertRaises(SystemExit):
+            deliver.cmd_answer(self.db, ns("00000003", note="go"))
 
     def test_requeue(self):
         deliver.cmd_hold(self.db, ns("00000001", question="Is this one in scope?"))
