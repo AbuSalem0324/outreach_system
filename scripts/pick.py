@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Offer a recipient picker on Telegram. Does not choose or draft.
+"""The recipient picker.
 
-resolve prints the research card above the chosen recipient, so the
-relevance sentence is written against the same rules as a straight send.
+offer  the research job posts the candidates to Telegram. It also hands
+       over the angle and the relevance sentence, checked here, so that
+       nothing has to be written later.
+send   Adam's pick (o/to). Builds and delivers the draft to the chosen
+       address straight from what the offer stored. No model involved.
+show / resolve  print what is stored.
 """
 
 from __future__ import annotations
@@ -14,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from common import JOB_DONE, Supabase, Telegram, load_env, log, now_iso, research_card
+from first_touch import check_sentence
 
 PICKS_DIR = Path("/root/outreach/picks")
 
@@ -24,18 +29,18 @@ def pick_path(company_number: str) -> Path:
 
 def format_offer(payload: dict[str, Any]) -> str:
     name = payload.get("company_name") or payload.get("company_number")
-    lines = [f"Email candidates — {name}", f"o/to {payload['company_number']} N   or   o/to {payload['company_number']} email", ""]
+    lines = [f"Email candidates: {name}", f"o/to {payload['company_number']} N   or   o/to {payload['company_number']} email", ""]
     for i, c in enumerate(payload.get("candidates") or [], start=1):
         kind = c.get("kind") or "personal"
         who = c.get("name") or kind
         role = c.get("position") or c.get("department") or kind
         conf = c.get("confidence")
         conf_s = f" (conf {conf})" if conf is not None else ""
-        lines.append(f"{i}. {c.get('email')} — {who}, {role}{conf_s}")
+        lines.append(f"{i}. {c.get('email')}: {who}, {role}{conf_s}")
         if c.get("reason"):
             lines.append(f"   -> {c['reason']}")
     lines.append("")
-    lines.append("Reply o/to <company_number> <n or email>. No draft until you pick.")
+    lines.append("Reply o/to <company_number> <n or email>. The draft follows straight away.")
     return "\n".join(lines)[:4000]
 
 
@@ -48,6 +53,13 @@ def cmd_offer(args: argparse.Namespace) -> int:
         raise SystemExit("company_number missing")
     payload["company_number"] = cn
     payload["offered_at"] = now_iso()
+    # Checked now, while the job that knows the company can still fix them.
+    payload["angle"] = check_sentence("angle", payload.get("angle") or "")
+    payload["relevance"] = check_sentence("relevance", payload.get("relevance") or "")
+    cands = [c for c in payload.get("candidates") or [] if (c.get("email") or "").strip()]
+    if len(cands) < 2:
+        raise SystemExit("a picker needs at least two candidates with an email; with one, send to it")
+    payload["candidates"] = cands
     PICKS_DIR.mkdir(parents=True, exist_ok=True)
     dest = pick_path(cn)
     dest.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -103,6 +115,46 @@ def chosen_payload(payload: dict[str, Any], chosen: dict[str, Any]) -> dict[str,
     }
 
 
+def cmd_send(args: argparse.Namespace, db: Any = None) -> int:
+    """o/to: deliver the draft to the address Adam picked."""
+    import deliver
+
+    load_env()
+    path = pick_path(args.company_number)
+    if not path.is_file():
+        raise SystemExit(f"no picker on file for {args.company_number}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    chosen = resolve_choice(payload, args.choice)
+    relevance = (args.relevance or payload.get("relevance") or "").strip()
+    if not relevance:
+        raise SystemExit(
+            "this picker was offered before the relevance sentence was stored with it. "
+            'Pass one: pick.py send --company-number <n> <choice> --relevance "<one sentence>"'
+        )
+    generic = (chosen.get("kind") or "") == "generic"
+    db = db or Supabase()
+    code = deliver.cmd_send(db, argparse.Namespace(
+        company_number=args.company_number,
+        email=chosen["email"],
+        buyer_name="" if generic else (chosen.get("name") or ""),
+        buyer_role="" if generic else (chosen.get("position") or ""),
+        angle=payload.get("angle") or "",
+        relevance=relevance,
+        linkedin_url=chosen.get("linkedin_url") or "",
+        phone=chosen.get("phone") or "",
+        phone_type=chosen.get("phone_type") or "",
+        postal_address=payload.get("postal_address") or "",
+        company_name=payload.get("company_name"),
+        skip_verify=False,
+    ))
+    if code == 5:
+        # That address failed or stalled at verification. The other candidates are still good.
+        db.set_outcome(args.company_number, "awaiting_pick", f"{chosen['email']} did not pass verification; pick another")
+        print(json.dumps({"say": f"{chosen['email']} did not pass verification, so no draft. "
+                                 f"Pick another: o/to {args.company_number} <n or email>"}))
+    return code
+
+
 def cmd_resolve(args: argparse.Namespace) -> int:
     path = pick_path(args.company_number)
     if not path.is_file():
@@ -126,6 +178,10 @@ def main() -> int:
     o.add_argument("--file", help="JSON payload; default /root/outreach/picks/<cn>.json")
     s = sub.add_parser("show")
     s.add_argument("--company-number", required=True)
+    d = sub.add_parser("send")
+    d.add_argument("--company-number", required=True)
+    d.add_argument("choice", help="1-based index or email")
+    d.add_argument("--relevance", default="", help="only for a picker offered before relevance was stored")
     r = sub.add_parser("resolve")
     r.add_argument("--company-number", required=True)
     r.add_argument("choice", help="1-based index or email")
@@ -133,6 +189,8 @@ def main() -> int:
     args = p.parse_args()
     if args.cmd == "offer":
         return cmd_offer(args)
+    if args.cmd == "send":
+        return cmd_send(args)
     if args.cmd == "show":
         return cmd_show(args)
     return cmd_resolve(args)

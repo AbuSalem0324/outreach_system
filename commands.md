@@ -92,15 +92,23 @@ run is going.
 
 ## `o/to <company_number> <n or email>`
 
-Resolves a picker. Hermes:
+Adam's answer to a picker. One command, and Hermes writes nothing:
 
-1. `python3 scripts/pick.py resolve --company-number <n> <choice>`
-2. The script prints the card and the chosen recipient. Hermes writes
-   the relevance sentence and calls `deliver.py send` with that
-   `--email` and the stored angle. `deliver.py` builds the email.
+```
+python3 scripts/pick.py send --company-number <n> <choice>
+```
+
+`<choice>` is the number from the picker message, or the email. The
+script builds the draft from what the research job stored with the
+picker (angle, relevance sentence, the chosen person's details),
+verifies the address, and delivers the draft file as usual. If the
+address fails verification the company stays `awaiting_pick` and the
+script says to pick another.
 
 If only one company is `awaiting_pick`, `<company_number>` may be
-omitted. Do not draft until this command.
+omitted by Adam; look it up with `o/ status`. A picker offered before
+the relevance sentence was stored needs `--relevance "<sentence>"`;
+the script says so when that applies.
 
 ## Held companies: `o/ answer`, `o/ drop`
 

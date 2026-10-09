@@ -187,13 +187,17 @@ again. Do not reject the company because a sentence was refused.
 
 Picker: write `/root/outreach/picks/<company_number>.json`, then
 `python3 scripts/pick.py offer --company-number <n> --file <path>`.
-Every personal, relevant first, the generic last if one exists.
+Every personal, relevant first, the generic last if one exists. Write
+the angle and the relevance sentence now, as for a send: Adam picks
+the address and the draft is built from this file with no further
+research. `"kind": "generic"` on a shared inbox.
 
 ```json
 {
   "company_number": "01234567",
   "company_name": "Example Ltd",
   "angle": "one complete sentence",
+  "relevance": "one complete sentence",
   "postal_address": "1 Mill Lane, Bolton BL1 1AA",
   "candidates": [
     {"email": "jane@example.com", "name": "Jane Roe",
