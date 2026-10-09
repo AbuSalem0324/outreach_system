@@ -69,7 +69,11 @@ def summary(db: Supabase) -> dict:
     for r in db.select("contacts", select="status"):
         by_status[r["status"]] = by_status.get(r["status"], 0) + 1
     held = db.select("companies_seen", outcome="eq.held_review", select="company_number,company_name,reason")
+    from run import status_info
+
+    run = status_info(db)
     return {
+        "run": {"state": run["state"], "say": run["say"]},
         "held_for_adam": held,
         "first_touches_today": used,
         "daily_cap": None,

@@ -99,6 +99,61 @@ class OneJobPerCompany(unittest.TestCase):
         self.assertNotIn("—", text)
 
 
+class Status(unittest.TestCase):
+    def setUp(self):
+        for f in Path(os.environ["OUTREACH_STATE_DIR"]).rglob("*"):
+            if f.is_file():
+                f.unlink()
+        self.now = rs.utcnow()
+
+    def run_file(self, stopped=None):
+        stamp = self.now.isoformat()
+        rs.save_run({"campaign_id": "c1", "target": 3, "started_at": stamp, "touched_at": stamp, "stopped": stopped})
+
+    def test_idle(self):
+        self.assertEqual(run.status_info()["state"], "idle")
+
+    def test_alive_names_the_company_and_minutes(self):
+        from datetime import timedelta
+        self.run_file()
+        run.PID_FILE.write_text(str(os.getpid()))
+        run.note_in_hand(company_number="00715514", company_name="H.Whittaker & Sons", attempt=1,
+                         started_at=(self.now - timedelta(minutes=7)).isoformat(), job_pid=os.getpid())
+        info = run.status_info(now=self.now)
+        self.assertEqual(info["state"], "researching")
+        self.assertIn("Alive. Researching H.Whittaker & Sons (00715514), 7 min so far.", info["say"])
+
+    def test_dropped_when_the_worker_is_gone_and_no_report_was_made(self):
+        self.run_file()
+        run.PID_FILE.write_text("999999999")
+        run.note_in_hand(company_number="00715514", company_name="H.Whittaker & Sons", attempt=1, started_at=self.now.isoformat())
+        info = run.status_info(now=self.now)
+        self.assertEqual(info["state"], "dropped")
+        self.assertIn("crashed or was killed", info["say"])
+        self.assertIn("H.Whittaker & Sons was in hand", info["say"])
+
+    def test_finished_run_says_why(self):
+        self.run_file(stopped="target_reached")
+        info = run.status_info(now=self.now)
+        self.assertEqual(info["state"], "finished")
+        self.assertIn("Target reached.", info["say"])
+
+    def test_in_hand_file_is_cleared_between_jobs(self):
+        db = FakeDb()
+        nx.build_bundle = lambda d, row, c, ch, **kw: {"company_number": row["company_number"], "company_name": row["company_name"]}
+        seen = []
+
+        def job(cn, prompt, attempt):
+            seen.append(run.status_info(now=db.clock)["in_hand"])
+            db.tick()
+            db.set_outcome(cn, "promoted_to_contacts", "x")
+            return 0
+        run.PID_FILE.write_text(str(os.getpid()))
+        run.work(db, 2, None, job=job, step=nx.step, now=lambda: db.clock)
+        self.assertEqual([h["company_number"] for h in seen], ["00000001", "00000002"])
+        self.assertFalse(run.IN_HAND_FILE.exists())
+
+
 class NothingTellsTheModelAboutTheSequence(unittest.TestCase):
     def test_card(self):
         low = (ROOT / "research-card.md").read_text(encoding="utf-8").lower()

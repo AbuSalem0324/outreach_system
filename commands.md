@@ -1,6 +1,9 @@
 # commands.md: The Telegram Surface
 
-Everything Adam does happens in the Hermes Telegram chat. Three kinds
+Everything Adam does happens in the Hermes Telegram chat. He types
+commands as `o/ next 5`, `o/ status`, `o/ stop`, because Telegram
+swallows a leading `/`. Treat `o/ <command>` and `/<command>` alike.
+Three kinds
 of input: a file, a slash command, a reaction. Hermes maps each to the
 scripts below. Research is done by separate one-off jobs that `run.py`
 starts, each given only `research-card.md` and one company. The
@@ -129,7 +132,10 @@ company Adam brings up outside a campaign.
 
 ## `/status`
 
-Companies held for Adam, quota used today, drafts awaiting a reaction, follow-ups due, open
+Whether a run is alive, and what it is doing. Lead the reply with
+the `run.say` line, word for word: it says alive (and which company,
+for how many minutes), finished, or dropped without a report. Then
+companies held for Adam, quota used today, drafts awaiting a reaction, follow-ups due, open
 sequences. `python3 scripts/status.py summary`.
 
 ## Reactions

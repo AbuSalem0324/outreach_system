@@ -34,6 +34,7 @@ from common import Supabase, Telegram, load_env, log, research_card
 REPO = Path(__file__).resolve().parents[1]
 PID_FILE = rs.STATE_DIR / "run.pid"
 STOP_FILE = rs.STATE_DIR / "run.stop"
+IN_HAND_FILE = rs.STATE_DIR / "in_hand.json"  # what status reads; never shown to a research job
 JOBS_DIR = rs.STATE_DIR / "jobs"
 LOGS_DIR = rs.STATE_DIR / "logs"
 
@@ -71,13 +72,27 @@ def hermes_job(company_number: str, prompt: str, attempt: int) -> int:
     out = LOGS_DIR / f"job-{company_number}-{attempt}.log"
     with out.open("w", encoding="utf-8") as fh:
         try:
-            return subprocess.run(cmd, cwd=REPO, stdin=subprocess.DEVNULL, stdout=fh, stderr=subprocess.STDOUT,
-                                  timeout=JOB_TIMEOUT_S).returncode
-        except subprocess.TimeoutExpired:
-            return 124
+            proc = subprocess.Popen(cmd, cwd=REPO, stdin=subprocess.DEVNULL, stdout=fh, stderr=subprocess.STDOUT)
         except OSError as exc:
             fh.write(f"could not start Hermes: {exc}\n")
             return 127
+        note_in_hand(job_pid=proc.pid)
+        try:
+            return proc.wait(timeout=JOB_TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+            return 124
+
+
+def note_in_hand(**fields: Any) -> None:
+    """Record what the run is doing right now, for status."""
+    try:
+        current = json.loads(IN_HAND_FILE.read_text()) if IN_HAND_FILE.is_file() else {}
+    except ValueError:
+        current = {}
+    rs.STATE_DIR.mkdir(parents=True, exist_ok=True)
+    IN_HAND_FILE.write_text(json.dumps({**current, **fields}))
 
 
 def outcome_of(db: Any, company_number: str) -> str | None:
@@ -103,7 +118,11 @@ def work(db: Any, target: int, campaign: str | None, job: Callable[[str, str, in
         cn = bundle["company_number"]
         code = 0
         for attempt in range(1, ATTEMPTS + 1):
+            IN_HAND_FILE.unlink(missing_ok=True)
+            note_in_hand(company_number=cn, company_name=bundle.get("company_name"), attempt=attempt,
+                         started_at=rs.utcnow().isoformat())
             code = job(cn, job_prompt(bundle, retry=attempt > 1), attempt)
+            IN_HAND_FILE.unlink(missing_ok=True)
             log("job=ended", company_number=cn, attempt=attempt, exit=code, outcome=outcome_of(db, cn))
             if outcome_of(db, cn) != "in_research":
                 break
@@ -219,6 +238,7 @@ def cmd_work(args: argparse.Namespace) -> int:
     finally:
         PID_FILE.unlink(missing_ok=True)
         STOP_FILE.unlink(missing_ok=True)
+        IN_HAND_FILE.unlink(missing_ok=True)
 
 
 def cmd_stop(_: argparse.Namespace) -> int:
@@ -231,8 +251,60 @@ def cmd_stop(_: argparse.Namespace) -> int:
     return 0
 
 
+def alive(pid: Any) -> bool:
+    try:
+        os.kill(int(pid), 0)
+        return True
+    except (OSError, ValueError, TypeError):
+        return False
+
+
+def status_info(db: Any = None, now: Any = None) -> dict[str, Any]:
+    """Alive, stalled, or dropped, in one sentence Adam can read."""
+    now = now or rs.utcnow()
+    run = rs.load_run()
+    running = bool(running_pid())
+    try:
+        hand = json.loads(IN_HAND_FILE.read_text()) if IN_HAND_FILE.is_file() else None
+    except ValueError:
+        hand = None
+    progress = ""
+    if run and db is not None:
+        try:
+            import next as nx
+            done = sum(1 for r in nx.run_rows(db, run) if r.get("outcome") == rs.DELIVERED)
+            progress = f" Delivered {done} of {run['target']} so far."
+        except Exception:  # noqa: BLE001
+            progress = ""
+    if running and hand:
+        mins = int((now - rs._parse(hand["started_at"])).total_seconds() // 60)
+        who = f"{hand.get('company_name') or hand['company_number']} ({hand['company_number']})"
+        again = ", second attempt" if hand.get("attempt", 1) > 1 else ""
+        if hand.get("job_pid") and not alive(hand["job_pid"]):
+            state, say = "between", f"Alive. Just finished with {who}; moving on.{progress}"
+        else:
+            state = "researching"
+            say = f"Alive. Researching {who}, {mins} min so far{again}. A job is cut off at {JOB_TIMEOUT_S // 60} min.{progress}"
+    elif running:
+        state, say = "between", f"Alive. Building the brief for the next company.{progress}"
+    elif run and not run.get("stopped"):
+        state = "dropped"
+        left = f" {hand.get('company_name') or hand['company_number']} was in hand and will be picked up first." if hand else ""
+        say = f"Not running. The last run ended without a report, so it crashed or was killed.{left} o/ next <n> carries on.{progress}"
+    elif run:
+        state, say = "finished", f"Not running. Last run: {rs.WHY.get(run['stopped'], run['stopped'])}{progress.replace(' so far', '')}"
+    else:
+        state, say = "idle", "Not running. No run has been started yet."
+    return {"state": state, "running": running, "say": say, "in_hand": hand if running else None, "run": run}
+
+
 def cmd_status(_: argparse.Namespace) -> int:
-    print(json.dumps({"running": bool(running_pid()), "run": rs.load_run()}, indent=2))
+    load_env()
+    try:
+        db = Supabase()
+    except SystemExit:
+        db = None
+    print(json.dumps(status_info(db), indent=2))
     return 0
 
 
