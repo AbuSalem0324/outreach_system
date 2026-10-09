@@ -11,6 +11,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import next as nx  # noqa: E402
 import site_lookup as sl  # noqa: E402
 
+REAL_SCRAPE = nx.scrape_site  # other tests swap nx.scrape_site for a stub
+
 ROW = {
     "company_number": "00321426",
     "company_name": "George Romney Limited",
@@ -97,6 +99,67 @@ class Resolve(unittest.TestCase):
         self.assertFalse(tried[0]["live"])
 
 
+DDG = """
+<a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Ffind-and-update.company-information.service.gov.uk%2Fcompany%2F00321426&amp;rut=x">CH</a>
+<a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fwww.facebook.com%2Fromneys&amp;rut=x">fb</a>
+<a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fwww.kendal.example%2Fabout&amp;rut=x">Romney's</a>
+<a class="result__a" href="https://romneymarsh.example/">namesake</a>
+<a href="/settings">settings</a>
+"""
+
+
+class ScriptSearch(unittest.TestCase):
+    def test_result_domains_drop_directories_and_keep_order(self):
+        self.assertEqual(sl.search_domains(DDG), ["kendal.example", "romneymarsh.example"])
+
+    def test_search_result_accepted_only_when_the_site_names_the_company(self):
+        row = {**ROW, "email": None}
+        pages = {"https://kendal.example": "Kendal Mint Cake. Mintsfeet Road LA9 6NA",
+                 "https://romneymarsh.example": "George Romney Ltd wool"}
+        scrape = lambda url, verify=False: {"status": "ok", "final_url": url, "_text": pages[url]}  # noqa: E731
+        found, tried = sl.resolve(row, scrape, None, lambda url: (200, url, DDG))
+        self.assertEqual((found["source"], found["domain"], found["grade"]), ("script_web_search", "kendal.example", "verified"))
+        only_namesake = lambda url: (200, url, '<a href="https://romneymarsh.example/">x</a>')  # noqa: E731
+        found, tried = sl.resolve(row, scrape, None, only_namesake)
+        self.assertIsNone(found)
+        self.assertEqual(tried[-1]["grade"], "plausible")
+
+    def test_search_engine_failure_falls_through(self):
+        found, tried = sl.resolve({**ROW, "email": None}, site(""), None, lambda url: (0, url, ""))
+        self.assertIsNone(found)
+        self.assertEqual(tried[-1]["status"], "no_results")
+
+
+class Fetching(unittest.TestCase):
+    def test_bare_domain_tries_www_and_http(self):
+        self.assertEqual(nx.url_variants("tommoorhouse.example"), [
+            "https://tommoorhouse.example", "https://www.tommoorhouse.example",
+            "http://www.tommoorhouse.example", "http://tommoorhouse.example"])
+        self.assertEqual(nx.url_variants("https://x.example/contact"), ["https://x.example/contact"])
+
+    def scrape(self, answers):
+        real = nx.fetch_html
+        nx.fetch_html = lambda url: answers.get(url, (0, url, ""))
+        try:
+            return REAL_SCRAPE("co.example", verify=True)
+        finally:
+            nx.fetch_html = real
+
+    def test_site_that_only_answers_on_http_www_is_not_dead(self):
+        out = self.scrape({"http://www.co.example": (200, "http://www.co.example/", "<html><body>Co Ltd BL6 4SB</body></html>")})
+        self.assertEqual(out["status"], "ok")
+        self.assertIn("BL6 4SB", out["_text"])
+
+    def test_refusal_is_reported_as_blocked_not_dead(self):
+        out = self.scrape({"https://co.example": (403, "https://co.example", "")})
+        self.assertEqual(out["status"], "blocked_http_403")
+        cand = sl.check_candidate("https://co.example", ROW, lambda url, verify=False: dict(out), "t")
+        self.assertEqual(cand["status"], "exists_but_blocked_the_script")
+
+    def test_nothing_anywhere_is_no_answer(self):
+        self.assertEqual(self.scrape({})["status"], "unreachable_http_0")
+
+
 class FakeDb:
     def __init__(self, row):
         self.row = dict(row)
@@ -141,6 +204,14 @@ class Commands(unittest.TestCase):
     def test_dead_url_refused(self):
         with self.assertRaises(SystemExit):
             self.set("", status="unreachable_http_0")
+
+    def test_blocked_site_needs_evidence_then_is_recorded_unverified(self):
+        with self.assertRaises(SystemExit) as cm:
+            self.set("", status="blocked_http_403")
+        self.assertIn("Open it yourself", str(cm.exception))
+        out = self.set("", status="blocked_http_403", evidence="Footer shows Mintsfeet Road Kendal and company 321426")
+        self.assertEqual(self.db.row["raw"]["_site"]["grade"], "unverified")
+        self.assertIn("read the site yourself", out["note"])
 
     def test_none_sets_outcome_and_needs_the_searches(self):
         with self.assertRaises(SystemExit):

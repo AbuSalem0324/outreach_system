@@ -106,8 +106,43 @@ def fetch_html(url: str) -> tuple[int, str, str]:
             if "html" not in ctype and not raw[:64].lstrip().lower().startswith((b"<!doctype", b"<html")):
                 return resp.status, resp.geturl(), ""
             return resp.status, resp.geturl(), raw.decode("utf-8", errors="replace")
-    except Exception as exc:  # noqa: BLE001
+    except urllib.error.HTTPError as exc:
+        return exc.code, url, ""
+    except Exception:  # noqa: BLE001
         return 0, url, ""
+
+
+# A site that answers with one of these exists; it is refusing this script.
+BLOCKED_CODES = {401, 403, 406, 409, 429, 451, 503}
+
+
+def url_variants(website: str) -> list[str]:
+    """The address as given, then the common alternatives for a bare domain.
+
+    Plenty of small company sites only answer on www, or only on http.
+    Calling those dead throws away a real company.
+    """
+    given = website if "://" in website else f"https://{website}"
+    parsed = urllib.parse.urlparse(given)
+    if parsed.path.strip("/") or parsed.query:
+        return [given]
+    host = parsed.netloc.lower()
+    bare = host[4:] if host.startswith("www.") else host
+    out = [given]
+    for v in (f"https://www.{bare}", f"https://{bare}", f"http://www.{bare}", f"http://{bare}"):
+        if v.rstrip("/") not in [o.rstrip("/") for o in out]:
+            out.append(v)
+    return out
+
+
+def fetch_first(website: str) -> tuple[int, str, str, list[dict[str, Any]]]:
+    tried: list[dict[str, Any]] = []
+    for url in url_variants(website):
+        status, final_url, html = fetch_html(url)
+        tried.append({"url": url, "http": status})
+        if html:
+            return status, final_url, html, tried
+    return 0, website, "", tried
 
 
 def parse(html: str) -> PageParser:
@@ -130,10 +165,14 @@ def scrape_site(website: str | None, *, verify: bool = False) -> dict[str, Any]:
         return {"status": "no_website"}
     wanted = INTEREST_PATHS + (VERIFY_PATHS if verify else ())
     max_pages = MAX_PAGES + (3 if verify else 0)
-    url = website if "://" in website else f"https://{website}"
-    status, final_url, html = fetch_html(url)
+    status, final_url, html, attempts = fetch_first(website)
     if not html:
-        return {"status": f"unreachable_http_{status}", "final_url": final_url}
+        codes = [a["http"] for a in attempts]
+        blocked = next((c for c in codes if c in BLOCKED_CODES), None)
+        if blocked:
+            # Not dead: the site answered and refused. A person or a browser can still read it.
+            return {"status": f"blocked_http_{blocked}", "final_url": attempts[0]["url"], "attempts": attempts}
+        return {"status": f"unreachable_http_{max(codes) if codes else 0}", "final_url": attempts[0]["url"], "attempts": attempts}
 
     home = parse(html)
     pages = [(final_url, home)]
@@ -326,7 +365,7 @@ def next_pending(db: Supabase, campaign: dict[str, Any]) -> dict[str, Any] | Non
             found, tried = (None, [])
             if not row.get("website"):
                 # Never a rejection: a missing website is something to look up.
-                found, tried = sl.resolve(row, scrape_site, hunt_company)
+                found, tried = sl.resolve(row, scrape_site, hunt_company, fetch_html)
                 if found:
                     row = sl.record(db, row, found)
                 else:

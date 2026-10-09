@@ -84,6 +84,7 @@ class Loop(unittest.TestCase):
             "website": row.get("website"), "tried": kw.get("tried")}
         nx.scrape_site = lambda url, verify=False: {"status": "unreachable_http_0", "final_url": url}
         nx.hunt_company = lambda name: {"status": "ok", "domain": None}
+        nx.fetch_html = lambda url: (0, url, "")
         self.db = FakeDb()
 
     def step(self, target=None):
@@ -197,6 +198,15 @@ class Loop(unittest.TestCase):
             out = self.step()
         self.assertEqual(out["why"], "reject_streak")
         self.assertEqual(len(out["no_site_found"]), rs.MAX_REJECT_STREAK)
+
+    def test_report_shows_seconds_in_hand(self):
+        out = self.step(1)
+        self.db.clock += timedelta(seconds=90)
+        self.finish(out, "send")
+        rep = self.step()
+        self.assertEqual(rep["target"], 1)
+        self.assertEqual(rep["time_in_hand"][0]["outcome"], "promoted_to_contacts")
+        self.assertGreaterEqual(rep["time_in_hand"][0]["seconds"], 0)
 
     def test_bare_next_without_a_run(self):
         self.assertEqual(self.step()["why"], "no_active_run")

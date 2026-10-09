@@ -4,7 +4,8 @@
 Ladder, first hit wins:
   1. the Endole email's domain, unless it is a freemail or ISP address
   2. Hunter domain-search by company name
-  3. Hermes, by web search, then `site_lookup.py set`
+  3. a web search by this script, name plus registered postcode
+  4. Hermes, by web search, then `site_lookup.py set`
 
 Every candidate is fetched and checked against Companies House facts
 the script already holds: the company number, the registered postcode,
@@ -23,6 +24,7 @@ import json
 import os
 import re
 import sys
+import urllib.parse
 from typing import Any, Callable
 
 from common import Supabase, _name_key, domain_from_email, domain_from_website, load_env, log, now_iso
@@ -40,6 +42,44 @@ POSTCODE_RE = re.compile(r"\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\b", re.I)
 NUMBER_RE = re.compile(r"\b(?:[A-Z]{2}\d{6}|\d{6,8})\b", re.I)
 VERIFIED, PLAUSIBLE, UNVERIFIED = "verified", "plausible", "unverified"
 HUNTER_BY_NAME = os.environ.get("OUTREACH_HUNTER_COMPANY_SEARCH", "1") != "0"
+SCRIPT_SEARCH = os.environ.get("OUTREACH_SCRIPT_SEARCH", "1") != "0"
+SEARCH_URL = "https://html.duckduckgo.com/html/?q={q}"
+MAX_SEARCH_CANDIDATES = 4
+HREF_RE = re.compile(r'href="([^"]+)"', re.I)
+# Pages about a company that are never the company's own site.
+NOT_THEIR_SITE = (
+    "duckduckgo.com", "google.", "bing.com", "gov.uk", "endole.co.uk", "facebook.com", "linkedin.com",
+    "twitter.com", "x.com", "instagram.com", "youtube.com", "tiktok.com", "wikipedia.org", "yell.com",
+    "yelp.", "192.com", "cylex", "companycheck", "company-check", "opencorporates.com", "dnb.com",
+    "bloomberg.com", "zoominfo.com", "rocketreach.co", "crunchbase.com", "thegazette.co.uk",
+    "tripadvisor.", "trustpilot.com", "checkatrade.com", "scoot.co.uk", "thomsonlocal.com",
+    "misterwhat", "pomanda.com", "globaldatabase.com", "northdata.", "b2bhint.com", "creditsafe.",
+    "experian.", "kompass.com", "europages.", "hotfrog.", "freeindex.co.uk", "brownbook.net",
+    "bizdb.co.uk", "bizstats.co.uk", "solocheck", "companiesintheuk.co.uk", "duedil.com", "apollo.io",
+    "signalhire.com", "lusha.com", "indeed.", "glassdoor.", "amazon.", "ebay.", "companieslist.co.uk",
+    "ukcompanydir", "datalog.co.uk", "find-and-update.company-information", "doogal.co.uk",
+    "getthedata.com", "streetcheck.co.uk", "rightmove.co.uk", "zoopla.co.uk", "foodanddrink",
+    "fhrs", "food.gov", "scoresonthedoors", "cqc.org.uk", "nhs.uk", "britishlistedbuildings",
+)
+
+
+def search_domains(html: str) -> list[str]:
+    """Result domains from a DuckDuckGo HTML page, in order, directories removed."""
+    out: list[str] = []
+    for href in HREF_RE.findall(html or ""):
+        href = href.replace("&amp;", "&")
+        if "uddg=" in href:
+            target = (urllib.parse.parse_qs(urllib.parse.urlparse(href).query).get("uddg") or [""])[0]
+        elif href.startswith("http"):
+            target = href
+        else:
+            continue
+        domain = domain_from_website(target)
+        if not domain or "." not in domain or is_freemail(domain) or any(tok in domain for tok in NOT_THEIR_SITE):
+            continue
+        if domain not in out:
+            out.append(domain)
+    return out
 
 
 def is_freemail(domain: str | None) -> bool:
@@ -87,13 +127,15 @@ def grade_text(text: str, company_number: str | None, company_name: str | None, 
 def check_candidate(url: str, row: dict[str, Any], scrape: Callable[..., dict[str, Any]], source: str) -> dict[str, Any]:
     site = scrape(url, verify=True)
     text = site.pop("_text", "")
-    live = site.get("status") == "ok"
+    status = str(site.get("status"))
+    live = status == "ok"
     grade, matched = grade_text(text, row.get("company_number"), row.get("company_name"), row_postcode(row)) if live else (UNVERIFIED, [])
     return {
         "url": site.get("final_url") or url,
         "domain": domain_from_website(site.get("final_url") or url),
         "source": source,
         "live": live,
+        "status": "ok" if live else ("exists_but_blocked_the_script" if status.startswith("blocked") else "no_answer"),
         "grade": grade,
         "matched": matched,
         "site": site,
@@ -105,8 +147,9 @@ def public(cand: dict[str, Any]) -> dict[str, Any]:
 
 
 def resolve(row: dict[str, Any], scrape: Callable[..., dict[str, Any]],
-            hunt_company: Callable[[str], dict[str, Any]] | None) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
-    """Steps 1 and 2. Returns (accepted candidate or None, everything tried)."""
+            hunt_company: Callable[[str], dict[str, Any]] | None,
+            fetch: Callable[[str], tuple[int, str, str]] | None = None) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
+    """Steps 1 to 3. Returns (accepted candidate or None, everything tried)."""
     tried: list[dict[str, Any]] = []
     email_domain = domain_from_email(row.get("email"))
     if email_domain and is_freemail(email_domain):
@@ -129,6 +172,26 @@ def resolve(row: dict[str, Any], scrape: Callable[..., dict[str, Any]],
                 return cand, tried
         else:
             tried.append({"source": "hunter_company_search", "status": found.get("status"), "domain": domain})
+    if fetch and SCRIPT_SEARCH and row.get("company_name"):
+        seen = {t.get("domain") for t in tried}
+        name = re.sub(r"\s+", " ", row["company_name"]).strip()
+        queries = [f'"{name}" {row_postcode(row) or ""}'.strip(), name]
+        domains: list[str] = []
+        for q in queries:
+            http, _, html = fetch(SEARCH_URL.format(q=urllib.parse.quote_plus(q)))
+            hits = search_domains(html)
+            log("site=search", query=q, http=http, results=len(hits))
+            domains += [d for d in hits if d not in domains and d not in seen]
+            if len(domains) >= MAX_SEARCH_CANDIDATES:
+                break
+        if not domains:
+            tried.append({"source": "script_web_search", "status": "no_results", "queries": queries})
+        for domain in domains[:MAX_SEARCH_CANDIDATES]:
+            cand = check_candidate(f"https://{domain}", row, scrape, "script_web_search")
+            tried.append(public(cand))
+            # A search result is a guess until the site itself names the company.
+            if cand["live"] and cand["grade"] == VERIFIED:
+                return cand, tried
     return None, tried
 
 
@@ -167,9 +230,15 @@ def cmd_set(db: Any, args: argparse.Namespace) -> dict[str, Any]:
     cand = check_candidate(args.url, row, nx.scrape_site, "web_search")
     if is_freemail(cand["domain"]):
         raise SystemExit("that is an email provider, not a company website")
-    if not cand["live"]:
-        raise SystemExit(f"could not load {args.url} ({cand['site'].get('status')}); check the address, or try another result")
     evidence = (args.evidence or "").strip()
+    blocked = cand["status"] == "exists_but_blocked_the_script"
+    if blocked and len(evidence) < 20:
+        raise SystemExit(
+            f"{args.url} exists but refuses this script, so it cannot be checked here. Open it yourself. If it is this "
+            'company, run set again with --evidence "<what on the site ties it to this company>".'
+        )
+    if not cand["live"] and not blocked:
+        raise SystemExit(f"could not load {args.url} on https, http, or www; check the address, or try another result")
     if cand["grade"] == UNVERIFIED and len(evidence) < 20:
         log("guardrail=site_unverified_refused", company_number=args.company_number, url=cand["url"])
         raise SystemExit(
@@ -181,8 +250,12 @@ def cmd_set(db: Any, args: argparse.Namespace) -> dict[str, Any]:
         )
     row = record(db, row, cand, evidence or None)
     bundle = nx.build_bundle(db, row, {"id": row.get("campaign_id")}, None, site=cand["site"], hunter=cand.get("hunter"))
+    bundle["handed_at"] = (rs.cached_bundle(args.company_number) or {}).get("handed_at")
     rs.cache_bundle(bundle)
-    return {"bundle": bundle, "note": f"Site recorded ({cand['grade']}). Carry on from section 1 of the card."}
+    note = f"Site recorded ({cand['grade']}). Carry on from section 1 of the card."
+    if blocked:
+        note += " The script could not read this site, so the bundle has no site text: read the site yourself."
+    return {"bundle": bundle, "note": note}
 
 
 def cmd_none(db: Any, args: argparse.Namespace) -> dict[str, Any]:

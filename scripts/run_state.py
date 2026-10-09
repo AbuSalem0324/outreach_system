@@ -120,6 +120,18 @@ WHY = {
 }
 
 
+def time_in_hand(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Seconds between handing a company out and its outcome. Research takes minutes, not seconds."""
+    out = []
+    for r in rows:
+        handed = (cached_bundle(r.get("company_number") or "") or {}).get("handed_at")
+        if not handed or not r.get("last_checked_at") or r.get("outcome") in ("rejected_check", "rejected_ingest"):
+            continue
+        secs = int((_parse(r["last_checked_at"]) - _parse(handed)).total_seconds())
+        out.append({"company": r.get("company_name") or r.get("company_number"), "outcome": r.get("outcome"), "seconds": max(secs, 0)})
+    return out
+
+
 def report(run: dict[str, Any] | None, rows: list[dict[str, Any]], why: str) -> dict[str, Any]:
     delivered = _named(rows, DELIVERED)
     return {
@@ -135,9 +147,10 @@ def report(run: dict[str, Any] | None, rows: list[dict[str, Any]], why: str) -> 
         "rejected_verify": _named(rows, "rejected_verify", "reason"),
         "rejected_research": _named(rows, "rejected_research", "reason"),
         "no_site_found": _named(rows, "no_site_found", "searched"),
+        "time_in_hand": time_in_hand(rows),
         "skipped_by_script": sum(1 for r in rows if r.get("outcome") in ("rejected_check", "rejected_ingest")),
-        "instruction": "Reply to Adam once with this report, including each rejection reason and each held "
-                       "question. Do not call next.py again and do not research any other company.",
+        "instruction": "Reply to Adam once with this report as it is: the target, the delivered count, each rejection "
+                       "reason, each held question, and the seconds in hand per company. Do not reword the summary line. Do not call next.py again and do not research any other company.",
     }
 
 
@@ -147,6 +160,8 @@ def bundle_path(company_number: str) -> Path:
 
 def cache_bundle(bundle: dict[str, Any]) -> None:
     BUNDLES_DIR.mkdir(parents=True, exist_ok=True)
+    if not bundle.get("handed_at"):
+        bundle["handed_at"] = utcnow().isoformat()
     bundle_path(bundle["company_number"]).write_text(json.dumps(bundle, ensure_ascii=False) + "\n", encoding="utf-8")
 
 

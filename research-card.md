@@ -25,9 +25,19 @@ needs an observed reason too. "Not a fit" is not a reason.
 ## 0. No website in the bundle
 
 Only when the bundle has `site_search`. The script has already tried
-the Endole email's domain and Hunter; `already_tried` shows what
-failed, so do not repeat those. Search the web for the company name
-with its town or `registered_postcode`. Then one of:
+the Endole email's domain, Hunter, and a web search of its own.
+`already_tried` shows each candidate and its `status`:
+
+- `exists_but_blocked_the_script`: the site is there, the script was
+  refused. Open it yourself. It is probably the right one.
+- `no_answer`: the script got nothing. Open it yourself before you
+  believe it; do not write "dead" on the script's word.
+- `ok` with grade `unverified` or `plausible`: it loaded but did not
+  name this company. Look at it.
+
+Then run your own web searches: the company name with its town, and
+with `registered_postcode`. Run them. Copying `already_tried` into
+`--searched` is not a search. Then one of:
 
 ```
 python3 scripts/site_lookup.py set --company-number <n> --url <url>
