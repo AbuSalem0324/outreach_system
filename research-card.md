@@ -70,7 +70,9 @@ Endole or the site updates. Read `raw._address` as well: a `C/O`
 address naming another company or a group finance director is a
 subsidiary signal; confirm with the search.
 
-Reject only on one of these, with the evidence in the reason:
+Reject when the research shows this is not a company worth writing
+to. That judgement is yours, and it is the reason this job is done by
+research and not by a mailing list. The usual grounds:
 
 - Subsidiary or recently acquired: a parent owns the tooling decision
 - In administration, liquidation, strike-off, or visibly closing
@@ -81,9 +83,14 @@ Reject only on one of these, with the evidence in the reason:
 - Site is dead, parked, or abandoned
 - Nothing true to hang an angle on (see 4)
 
-A doubt is not a disqualifier. If the evidence is mixed, or you cannot
-tell whether one of these applies, hold the company with one question
-for Adam. Do not reject it to move on.
+The list is not closed. If the research turns up another real reason
+this company is a poor fit, reject on it. Whatever the ground, the
+reason must say what you found, specifically enough that Adam can
+agree or overrule it at a glance.
+
+A rejection rests on something found, not on a doubt. If the evidence
+is mixed, or you cannot tell, hold the company with one question for
+Adam.
 
 What a buyer looks like, none of it required: a physical operation
 (production line, cold store, fleet, several sites, shifts), sells to
