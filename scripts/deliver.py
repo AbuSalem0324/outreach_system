@@ -8,7 +8,7 @@ reject: mark the company rejected_research with a reason.
 hold:   park the company for Adam with one question (held_review).
 requeue: put a company back to pending. Adam's call, not research's.
 
-reject and hold only work on the company next.py has handed out, so a
+reject and hold only work on the company the run has handed out, so a
 run cannot clear rows it was never given.
 
 Both update companies_seen so the company never resurfaces silently.
@@ -23,6 +23,7 @@ from typing import Any
 
 from check import check_email
 from common import (
+    JOB_DONE,
     SOURCE,
     Supabase,
     Telegram,
@@ -71,7 +72,6 @@ def company_row(db: Supabase, company_number: str) -> dict[str, Any]:
     return rows[0]
 
 
-NEXT_CMD = "python3 scripts/next.py"
 SENDABLE = {"in_research", "awaiting_pick", "held_verify", "held_review"}
 
 
@@ -80,7 +80,7 @@ def require_in_hand(company: dict[str, Any], verb: str) -> None:
         log("guardrail=not_in_hand", verb=verb, company_number=company.get("company_number"), outcome=company.get("outcome"))
         raise SystemExit(
             f"{verb} refused: {company.get('company_number')} is not the company in hand "
-            f"(outcome={company.get('outcome')}). Only the company next.py gave you can be finished."
+            f"(outcome={company.get('outcome')}). Only the company you were given can be finished."
         )
 
 
@@ -90,7 +90,7 @@ def decline(db: Supabase, args: argparse.Namespace, verb: str, outcome: str, tex
         raise SystemExit(f"{verb} needs a specific sentence: what you saw, or what you need Adam to decide")
     require_in_hand(company_row(db, args.company_number), verb)
     db.set_outcome(args.company_number, outcome, text)
-    print(json.dumps({"company_number": args.company_number, "outcome": outcome, "reason": text, "next": NEXT_CMD}))
+    print(json.dumps({"company_number": args.company_number, "outcome": outcome, "reason": text, "done": JOB_DONE}))
     return 0
 
 
@@ -117,8 +117,8 @@ def cmd_send(db: Supabase, args: argparse.Namespace) -> int:
     was = company.get("outcome")
     if was not in SENDABLE:
         log("guardrail=not_in_hand", verb="send", company_number=args.company_number, outcome=was)
-        raise SystemExit(f"send refused: {args.company_number} has outcome={was}; it was not handed out by next.py or a picker")
-    follow_on = {"next": NEXT_CMD} if was == "in_research" else {}
+        raise SystemExit(f"send refused: {args.company_number} has outcome={was}; it is not the company you were given")
+    follow_on = {"done": JOB_DONE} if was == "in_research" else {}
     if not company.get("website"):
         log("guardrail=send_without_site", company_number=args.company_number)
         raise SystemExit(
@@ -136,7 +136,7 @@ def cmd_send(db: Supabase, args: argparse.Namespace) -> int:
         return 3
     if check["decision"] == "clear" and check.get("reason") == "draft_already_pending":
         if was == "in_research":
-            # Give it an outcome, or next.py would hand the same company out forever.
+            # Give it an outcome, or the run would hand the same company out forever.
             db.set_outcome(args.company_number, "rejected_check", f"{email}: draft_already_pending")
         print(json.dumps({"delivered": False, "why": "draft_already_pending", "check": check, **follow_on}, indent=2))
         return 3

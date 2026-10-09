@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""The /next run: one company at a time, counted in code.
+"""The /next run: its definition, its counts, and when it stops.
 
 A run is "deliver N drafts". Its definition lives in a small local file;
 every count is derived from companies_seen, so nothing here can drift
-from the database. Hermes never sees how many companies are left.
+from the database. Only run.py reads any of this: the research job is
+never shown a run, a target, or a count.
 """
 
 from __future__ import annotations
@@ -115,21 +116,11 @@ WHY = {
     "target_reached": "Target reached.",
     "reject_streak": f"Stopped early: {MAX_REJECT_STREAK} companies in a row were rejected, held, or had no site found. "
                      "Check the reasons below, then /next again to carry on.",
+    "stopped": "Stopped at your request.",
+    "hermes_missing": "Stopped: the research job could not be started. Check the Hermes command on the VPS.",
     "no_pending": "No pending companies left in this campaign.",
-    "no_active_run": "No run in progress. Start one with: python3 scripts/next.py --target <n>",
+    "no_active_run": "No run in progress.",
 }
-
-
-def time_in_hand(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Seconds between handing a company out and its outcome. Research takes minutes, not seconds."""
-    out = []
-    for r in rows:
-        handed = (cached_bundle(r.get("company_number") or "") or {}).get("handed_at")
-        if not handed or not r.get("last_checked_at") or r.get("outcome") in ("rejected_check", "rejected_ingest"):
-            continue
-        secs = int((_parse(r["last_checked_at"]) - _parse(handed)).total_seconds())
-        out.append({"company": r.get("company_name") or r.get("company_number"), "outcome": r.get("outcome"), "seconds": max(secs, 0)})
-    return out
 
 
 def report(run: dict[str, Any] | None, rows: list[dict[str, Any]], why: str) -> dict[str, Any]:
@@ -147,10 +138,7 @@ def report(run: dict[str, Any] | None, rows: list[dict[str, Any]], why: str) -> 
         "rejected_verify": _named(rows, "rejected_verify", "reason"),
         "rejected_research": _named(rows, "rejected_research", "reason"),
         "no_site_found": _named(rows, "no_site_found", "searched"),
-        "time_in_hand": time_in_hand(rows),
         "skipped_by_script": sum(1 for r in rows if r.get("outcome") in ("rejected_check", "rejected_ingest")),
-        "instruction": "Reply to Adam once with this report as it is: the target, the delivered count, each rejection "
-                       "reason, each held question, and the seconds in hand per company. Do not reword the summary line. Do not call next.py again and do not research any other company.",
     }
 
 
@@ -160,8 +148,6 @@ def bundle_path(company_number: str) -> Path:
 
 def cache_bundle(bundle: dict[str, Any]) -> None:
     BUNDLES_DIR.mkdir(parents=True, exist_ok=True)
-    if not bundle.get("handed_at"):
-        bundle["handed_at"] = utcnow().isoformat()
     bundle_path(bundle["company_number"]).write_text(json.dumps(bundle, ensure_ascii=False) + "\n", encoding="utf-8")
 
 

@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
-"""/next: hand Hermes one company at a time until N drafts are delivered.
+"""The next company for a run, as a library. run.py is the only caller.
 
-  next.py --target N   start a run (or carry on a live one with the same N)
-  next.py              the next company in the run, or the stop report
+step() returns exactly one research bundle or a stop report. A company
+that has been handed out and has no outcome yet is returned again:
+there is no way past it. The run stops at N delivered drafts, when
+pending runs out, or after a streak of rejections.
 
-The loop is here, not in the model. Each call returns exactly one
-research bundle, with research-card.md printed above it, or a stop
-report. A company that has been handed out and not yet finished is
-handed out again: there is no way to skip ahead. The run stops at N
-delivered drafts, when pending runs out, or after a streak of
-rejections. Hermes is never told how many companies are left.
+This file has no command line on purpose. See main().
 
 Deterministic. For the next pending companies_seen row, in CSV order:
 run check.md on the Endole email if present, scrape the company's own
@@ -24,7 +21,6 @@ that hands the company to Hermes to search for (card section 0).
 
 from __future__ import annotations
 
-import argparse
 import base64
 import json
 import os
@@ -288,7 +284,6 @@ def latest_campaign(db: Supabase) -> dict[str, Any] | None:
 
 
 PAGE = 20
-NEXT_CMD = "python3 scripts/next.py"
 
 
 def build_bundle(db: Supabase, row: dict[str, Any], campaign: dict[str, Any], check: dict[str, Any] | None,
@@ -416,8 +411,7 @@ def step(db: Supabase, target: int | None, campaign_arg: str | None, now=None) -
         if not bundle:
             bundle = build_bundle(db, held, campaign, None)
             rs.cache_bundle(bundle)
-        return {"bundle": bundle, "note": "This company was already handed out and has no outcome yet. "
-                                          "Finish it with one command from the card before asking for another."}
+        return {"bundle": bundle}
 
     rows = run_rows(db, run)
     why = rs.stop_reason(run, rows)
@@ -435,26 +429,13 @@ def step(db: Supabase, target: int | None, campaign_arg: str | None, now=None) -
     return rs.report(run, rows, why)
 
 
-def run(args: argparse.Namespace) -> int:
-    load_env()
-    target = args.target if args.target is not None else args.limit
-    out = step(Supabase(), target, args.campaign)
-    if out.get("bundle") and not args.no_card:
-        print(research_card())
-        print("===== COMPANY (JSON) =====")
-    print(json.dumps(out, indent=2, ensure_ascii=False))
-    if out.get("bundle"):
-        print(f"\nWhen this company has its one outcome, run: {NEXT_CMD}")
-    return 0
-
-
 def main() -> int:
-    p = argparse.ArgumentParser(description="/next: one company at a time until N drafts are delivered")
-    p.add_argument("--target", type=int, help="drafts to deliver this run; omit to continue the current run")
-    p.add_argument("--limit", type=int, help="old name for --target; still returns one company per call")
-    p.add_argument("--campaign", help="campaign id; default latest")
-    p.add_argument("--no-card", action="store_true", help="JSON only, without research-card.md above it")
-    return run(p.parse_args())
+    # Deliberately not runnable. If a research job could call this it would see
+    # the sequence, and could pull the next company before finishing its own.
+    log("guardrail=next_called_directly")
+    print("next.py is not run by hand or by a research job. A run is started with: "
+          "python3 scripts/run.py start --target <n>", file=sys.stderr)
+    return 2
 
 
 if __name__ == "__main__":

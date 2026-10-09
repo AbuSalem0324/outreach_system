@@ -27,7 +27,7 @@ import sys
 import urllib.parse
 from typing import Any, Callable
 
-from common import Supabase, _name_key, domain_from_email, domain_from_website, load_env, log, now_iso
+from common import JOB_DONE, Supabase, _name_key, domain_from_email, domain_from_website, load_env, log, now_iso
 
 FREEMAIL = {
     "gmail.com", "googlemail.com", "aol.com", "aol.co.uk", "icloud.com", "me.com", "mac.com", "msn.com",
@@ -209,7 +209,6 @@ def record(db: Any, row: dict[str, Any], cand: dict[str, Any], evidence: str | N
 # CLI: what Hermes calls after its own web search
 # ---------------------------------------------------------------------------
 
-NEXT_CMD = "python3 scripts/next.py"
 
 
 def in_hand(db: Any, company_number: str, verb: str) -> dict[str, Any]:
@@ -250,7 +249,6 @@ def cmd_set(db: Any, args: argparse.Namespace) -> dict[str, Any]:
         )
     row = record(db, row, cand, evidence or None)
     bundle = nx.build_bundle(db, row, {"id": row.get("campaign_id")}, None, site=cand["site"], hunter=cand.get("hunter"))
-    bundle["handed_at"] = (rs.cached_bundle(args.company_number) or {}).get("handed_at")
     rs.cache_bundle(bundle)
     note = f"Site recorded ({cand['grade']}). Carry on from section 1 of the card."
     if blocked:
@@ -264,7 +262,7 @@ def cmd_none(db: Any, args: argparse.Namespace) -> dict[str, Any]:
         raise SystemExit("--searched must say which searches you ran")
     in_hand(db, args.company_number, "site none")
     db.set_outcome(args.company_number, "no_site_found", searched)
-    return {"company_number": args.company_number, "outcome": "no_site_found", "next": NEXT_CMD}
+    return {"company_number": args.company_number, "outcome": "no_site_found", "done": JOB_DONE}
 
 
 def main() -> int:

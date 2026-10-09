@@ -109,8 +109,7 @@ class Loop(unittest.TestCase):
         first = self.step(3)
         for _ in range(5):
             again = self.step()
-            self.assertEqual(again["bundle"], first["bundle"])
-            self.assertIn("note", again)
+            self.assertEqual(again, {"bundle": first["bundle"]})
         self.assertEqual(self.built, ["00000001"])
         self.assertEqual(self.db.outcome("00000002"), "pending")
 
@@ -198,15 +197,6 @@ class Loop(unittest.TestCase):
             out = self.step()
         self.assertEqual(out["why"], "reject_streak")
         self.assertEqual(len(out["no_site_found"]), rs.MAX_REJECT_STREAK)
-
-    def test_report_shows_seconds_in_hand(self):
-        out = self.step(1)
-        self.db.clock += timedelta(seconds=90)
-        self.finish(out, "send")
-        rep = self.step()
-        self.assertEqual(rep["target"], 1)
-        self.assertEqual(rep["time_in_hand"][0]["outcome"], "promoted_to_contacts")
-        self.assertGreaterEqual(rep["time_in_hand"][0]["seconds"], 0)
 
     def test_bare_next_without_a_run(self):
         self.assertEqual(self.step()["why"], "no_active_run")

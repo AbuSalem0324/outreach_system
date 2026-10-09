@@ -40,8 +40,10 @@ reading the markdown above.
 
 - `scripts/common.py`: env loading, Supabase and Telegram helpers
 - `scripts/ingest.py`: CSV to `campaigns` and `companies_seen`
-- `scripts/next.py`: the `/next` loop: one research bundle per call,
-  until the target is delivered
+- `scripts/run.py`: the `/next` run: one separate Hermes research job
+  per company, then the report
+- `scripts/next.py`: the next company for a run; a library, with no
+  command line on purpose
 - `scripts/run_state.py`: run definition, counts, stop conditions
 - `scripts/site_lookup.py`: find and check a website when the export
   has none

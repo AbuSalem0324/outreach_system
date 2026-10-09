@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import sys
 import tempfile
@@ -218,7 +219,8 @@ class Commands(unittest.TestCase):
             sl.cmd_none(self.db, argparse.Namespace(company_number="00321426", searched="none"))
         out = sl.cmd_none(self.db, argparse.Namespace(company_number="00321426", searched="name + Kendal, name + LA9 6NA"))
         self.assertEqual(self.db.row["outcome"], "no_site_found")
-        self.assertIn("next", out)
+        self.assertIn("done", out)
+        self.assertNotIn("next", json.dumps(out))
 
     def test_only_the_company_in_hand(self):
         self.db.row["outcome"] = "pending"

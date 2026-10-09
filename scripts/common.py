@@ -23,6 +23,8 @@ USER_AGENT = "DataBardOutreach/2.0 (+https://databard.xyz)"
 SSL_CTX = ssl.create_default_context()
 UNSUB_URL = "https://www.databard.net/unsubscribe?e={email}"
 SOURCE = "endole_campaign"
+# What a finishing command tells the research job. Nothing about what comes after.
+JOB_DONE = "This job is finished. Reply with one line saying what you did, then stop."
 RESEARCH_CARD = Path(__file__).resolve().parents[1] / "research-card.md"
 
 

@@ -1,17 +1,17 @@
 # research-card.md: one company, start to finish
 
-This is the only document Hermes reads during `/next` and `o/to`.
-`next.py` and `pick.py resolve` print it with the bundle. The longer
-files (`research.md`, `draft.md`, `icp-definitions.md`) are reference
-for Adam. If they disagree with this card, tell Adam; do not pick one.
+This card is the whole brief. The longer files in this repository
+(`research.md`, `draft.md`, `icp-definitions.md`) are reference for
+Adam; do not open them.
 
-You have one company. Work on that company only, and take the time
-it needs: there is no batch, and you are not told how many are left.
+The job is one company: the one in the JSON below this card. Research
+it properly. There is no deadline and nothing waiting behind it, so
+take the searches and the reading the company needs. A careful
+rejection is as good a result as a draft; a quick guess is not.
+
 You do not write the email: you supply a buyer, an address, an angle,
 and one relevance sentence, and `deliver.py` assembles the rest from
-fixed copy. Finish with exactly one command from "Finish" below, then
-ask `next.py` for the next company. `next.py` decides when the run is
-over, not you.
+fixed copy. The job ends with exactly one command from "Finish".
 
 ICP for this card: `home-turf-fmcg-v1`.
 
@@ -56,7 +56,7 @@ python3 scripts/site_lookup.py none --company-number <n> \
 
 when two or three different searches turn up no site of their own. A
 directory listing or a Companies House page is not their site. This is
-an outcome, not a rejection: then run `python3 scripts/next.py`.
+an outcome, not a rejection, and it ends the job.
 
 ## 1. Disqualify?
 
@@ -166,8 +166,7 @@ Only when observed. Omit the flag otherwise.
 
 ## Finish
 
-Exactly one of these four for this company (or `site_lookup.py none`
-from section 0).
+Exactly one of these four (or `site_lookup.py none` from section 0).
 
 Send:
 
@@ -219,8 +218,8 @@ python3 scripts/deliver.py hold --company-number <n> \
   --question "<the one thing Adam needs to decide, and what you saw>"
 ```
 
-## Then
+## When the command succeeds
 
-Run `python3 scripts/next.py`. It prints either the next company or a
-stop report. On a stop report, reply to Adam once with what it says
-and stop. Do not research a company `next.py` did not give you.
+The job is finished. Reply with one line saying what you did, and
+stop. If the command was refused, read why, fix that, and run it
+again: a refusal is not an outcome.

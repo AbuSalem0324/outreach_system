@@ -2,8 +2,8 @@
 
 Everything Adam does happens in the Hermes Telegram chat. Three kinds
 of input: a file, a slash command, a reaction. Hermes maps each to the
-scripts below. For `/next` and `o/to` the only document Hermes reads
-is `research-card.md`, which the scripts print with the work. The
+scripts below. Research is done by separate one-off jobs that `run.py`
+starts, each given only `research-card.md` and one company. The
 other markdown files are reference for Adam, not run-time reading.
 
 ## A CSV file
@@ -26,53 +26,66 @@ skipped by `/next` unless asked otherwise.
 Deliver `n` successful first-touch drafts from the most recent campaign
 (or `--campaign <id>`). `n` is the only cap. There is no daily ceiling.
 
-The loop is in `next.py`, not in Hermes. One company per call.
+Hermes in this chat does one thing:
 
-1. `python3 scripts/next.py --target <n> [--campaign <id>]` starts the
-   run and prints `research-card.md`, then one JSON bundle: Endole row,
-   site summary, Companies House officers, Hunter emails, `check.md`
-   decision. Hard stops are already excluded by the script.
-2. Hermes follows the card for that one company. It does not open
-   `research.md`, `draft.md`, or `icp-definitions.md`.
-3. One outcome for that company:
-   - `python3 scripts/deliver.py send ...` when Stage 3 picked one
-     relevant personal or fell through to generic,
-   - `python3 scripts/pick.py offer --company-number <n> --file <json>`
-     when more than one personal and no single relevant title,
-   - `python3 scripts/deliver.py reject --company-number <n>
-     --reason "<why>"`,
-   - `python3 scripts/deliver.py hold --company-number <n>
-     --question "<what Adam needs to decide>"` when in doubt.
-4. `python3 scripts/next.py` (no arguments) for the next company. Back
-   to step 2, until it prints a stop report instead of a bundle.
-5. Reply once with the stop report: delivered, awaiting pick, held for
-   Adam with each question, held on verification, rejected in research
-   with each reason. Do not narrate the work.
+```
+python3 scripts/run.py start --target <n> [--campaign <id>]
+```
+
+and replies with the `say` line it prints. That is the whole of its
+part. It does not research anything.
+
+`run.py` then works in the background, one company at a time:
+
+1. It takes the next pending company and builds the bundle: Endole
+   row, site summary, Companies House officers, Hunter emails,
+   `check.md` decision. Hard stops are excluded here.
+2. It starts a **new, separate Hermes session** whose whole prompt is
+   `research-card.md` plus that one company. That session is a one-off
+   job. It is not told there is a run, a target, a queue, or a next
+   company, and it carries no memory from the job before.
+3. The job ends with one outcome: `deliver.py send`, `pick.py offer`,
+   `deliver.py reject`, `deliver.py hold`, or `site_lookup.py none`.
+4. Only when that company has an outcome in the database does `run.py`
+   look up the next one.
+5. When the run stops, `run.py` itself posts the report here:
+   delivered, awaiting pick, held with each question, rejected with
+   each reason, no website found.
 
 A company with no website in the export is not rejected. The script
-tries the Endole email's domain, then Hunter by company name, and
-checks each against the company number, postcode and registered name.
-If neither holds up, Hermes searches the web and records the result
-with `scripts/site_lookup.py set`, or `site_lookup.py none` if there
-is nothing to find (`no_site_found`, listed in the stop report).
+tries the Endole email's domain, Hunter by company name, and a web
+search of its own, checking each against the company number, postcode
+and registered name. Failing that, the research job searches and
+records the result with `site_lookup.py set`, or ends on
+`site_lookup.py none`.
 
-What the script enforces, whatever Hermes does:
+What the scripts enforce, whatever the model does:
 
-- A company handed out and not finished is handed out again. There is
-  no skipping ahead.
-- `reject` and `hold` only work on the company in hand.
-- `send` is refused while the company has no website on record.
+- One company in hand at a time. The next is not fetched until this
+  one has an outcome.
+- A job that ends without an outcome is run once more; after that the
+  company is held for Adam, so nothing is skipped silently.
+- `next.py` cannot be run from a command line, so a research job
+  cannot pull another company.
+- `reject`, `hold` and `site_lookup.py` only work on the company in
+  hand. `send` is refused while it has no website on record.
 - A site the script cannot match to the company needs `--evidence`,
   and the draft's caption says the site was not matched.
 - The run stops at `n` delivered, when pending runs out, or after 8
-  rejections, holds or no-site outcomes in a row. Typing `/next` again carries on.
-- Hermes is not told how many companies are left.
+  rejections, holds or no-site outcomes in a row. `/next` again
+  carries on.
+- Only one run at a time.
 
-Each of those logs a `guardrail=` line to stderr when it bites.
+Each of those logs a `guardrail=` line when it bites. Logs are in
+`/root/outreach/logs`: one per run, one per research job.
 
-If `n` is omitted, do not assume 10 and do not drain the campaign.
-If pending is gone before `n` drafts, say so and stop. Don't research
-a company that is not in a bundle.
+If `n` is omitted, ask for it. Do not assume 10.
+
+## `/stop`
+
+`python3 scripts/run.py stop`. The run finishes the company in hand,
+then stops and reports. `python3 scripts/run.py status` says whether a
+run is going.
 
 ## `o/to <company_number> <n or email>`
 
